@@ -255,6 +255,8 @@ class App(AccessMixin,InteractionMixin,DownloadMixin,RadioMixin,Gtk.Application)
         self.playback.pack_start(stage,True,True,0)
         self.video = Gtk.DrawingArea(); self.video.set_size_request(640,320); self.video.set_hexpand(True); self.video.set_vexpand(True)
         self.video.set_has_window(True)
+        # mpv draws through its own X11 connection, outside GTK's backing store.
+        self.video.set_app_paintable(True);self.video.set_double_buffered(False)
         self.video.set_can_focus(True)
         self.video.add_events(Gdk.EventMask.BUTTON_PRESS_MASK|Gdk.EventMask.SCROLL_MASK|Gdk.EventMask.SMOOTH_SCROLL_MASK)
         self.video.connect('button-press-event',self.video_button);self.video.connect('scroll-event',self.volume_scroll)
@@ -1648,6 +1650,9 @@ class App(AccessMixin,InteractionMixin,DownloadMixin,RadioMixin,Gtk.Application)
                 from gi.repository import GdkX11
                 if not isinstance(window,GdkX11.X11Window):
                     raise RuntimeError('La lecture intégrée nécessite X11 ou XWayland. Relancez TunPlayer avec son lanceur.')
+                if not window.ensure_native():raise RuntimeError('La surface vidéo native n’a pas pu être créée.')
+                # Flush GTK's native creation and geometry before mpv uses another connection.
+                window.get_display().sync()
                 window_id=window.get_xid()
             else:
                 raise RuntimeError('L’intégration vidéo native de ce système n’est pas encore disponible.')
@@ -1847,18 +1852,27 @@ class App(AccessMixin,InteractionMixin,DownloadMixin,RadioMixin,Gtk.Application)
         if not self.current or self.closing:return
         if hasattr(self,'view_stack'):
             self.cancel_stream_start();generation=self.stream_generation
-            self.accepting_load=False;started=time.monotonic()
+            self.accepting_load=False;started=time.monotonic();last_size=None
             def ready():
+                nonlocal started,last_size
                 if self.closing or generation!=self.stream_generation or not self.current:
                     self.stream_start_timer=None;return False
+                if self.view!='player':
+                    started=time.monotonic();last_size=None;return True
                 target=self.video_stack if self.current.get('radio') else self.video
                 visible_window=not hasattr(self,'window') or self.window.get_mapped()
-                if self.view=='player' and visible_window and (not target.get_mapped() or target.get_allocated_width()<2 or target.get_allocated_height()<2):
+                if not visible_window:
+                    started=time.monotonic();last_size=None;return True
+                size=(target.get_allocated_width(),target.get_allocated_height())
+                if not target.get_mapped() or min(size)<2:
+                    last_size=None
                     if time.monotonic()-started<3:return True
                     self.stream_start_timer=None;self.accepting_load=True
                     self.handle_playback_failure('La surface du lecteur ne s’est pas affichée. Réessayez.');return False
+                if size!=last_size:
+                    last_size=size;return True
                 self.stream_start_timer=None;self.load_current_stream();return False
-            self.stream_start_timer=GLib.timeout_add(16,ready)
+            self.stream_start_timer=GLib.timeout_add(16,ready,priority=GLib.PRIORITY_DEFAULT_IDLE)
             return
         self.load_current_stream()
 

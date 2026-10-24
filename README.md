@@ -2,7 +2,7 @@
 
 Lecteur IPTV de bureau, développé d’abord pour Linux. Interface française graphite et citron vert, panorama vectoriel original, cartes illustrées et bibliothèque locale. Projet inspiré des usages d’[UHF](https://getuhf.com/), avec une identité et une implémentation propres.
 
-**Version 1.3.0 : catégories protégées par PIN, fermeture du contenu clarifiée, volume visible et double-clic pour le plein écran. Radio, IPTV, téléchargements et distribution autonome Linux.**
+**Version 1.3.1 : démarrage vidéo stabilisé, catégories protégées par PIN, fermeture du contenu clarifiée, volume visible et double-clic pour le plein écran. Radio, IPTV, téléchargements et distribution autonome Linux.**
 
 ## Démarrer sous Linux
 

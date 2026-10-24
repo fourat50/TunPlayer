@@ -41,6 +41,35 @@ class DownloadController(unittest.TestCase):
         self.app.play(first);self.app.play(second);self.wait(lambda:self.app.tick() and self.app.media_loaded)
         self.assertEqual(self.app.player.loads,[second['url']])
 
+    def test_hidden_window_never_starts_the_native_video(self):
+        channel=self.add();self.staged(True);visible=[False]
+        self.app.window=SimpleNamespace(get_mapped=lambda:visible[0])
+        callbacks=[]
+        with patch('tunplayer.app.GLib.timeout_add',side_effect=lambda _,callback,**kw:callbacks.append(callback) or 123):self.app.play(channel)
+        ready=callbacks[-1]
+        self.assertTrue(ready());self.assertEqual(self.app.player.loads,[])
+        visible[0]=True
+        self.assertTrue(ready());self.assertEqual(self.app.player.loads,[])
+        self.assertFalse(ready());self.assertEqual(self.app.player.loads,[channel['url']])
+        self.app.stream_start_timer=None
+
+    def test_pending_video_waits_until_the_player_page_is_shown_again(self):
+        channel=self.add();self.staged(True);callbacks=[]
+        with patch('tunplayer.app.GLib.timeout_add',side_effect=lambda _,callback,**kw:callbacks.append(callback) or 123):self.app.play(channel)
+        ready=callbacks[-1];self.app.navigate('movie')
+        self.assertTrue(ready());self.assertEqual(self.app.player.loads,[])
+        self.app.navigate('player');self.assertTrue(ready());self.assertFalse(ready())
+        self.assertEqual(self.app.player.loads,[channel['url']]);self.app.stream_start_timer=None
+
+    def test_video_waits_for_a_stable_allocation(self):
+        channel=self.add();self.staged(True);width=[640];callbacks=[]
+        self.app.video.get_allocated_width=lambda:width[0]
+        with patch('tunplayer.app.GLib.timeout_add',side_effect=lambda _,callback,**kw:callbacks.append(callback) or 123):self.app.play(channel)
+        ready=callbacks[-1]
+        self.assertTrue(ready());width[0]=1000
+        self.assertTrue(ready());self.assertEqual(self.app.player.loads,[])
+        self.assertFalse(ready());self.assertEqual(self.app.player.loads,[channel['url']]);self.app.stream_start_timer=None
+
     def test_season_download_uses_all_episodes_not_the_current_search_page(self):
         self.app.library.import_channels('Series',[dict(name='Saga',kind='series',url='xtream-series:1',group_name='Test',logo='',tvg_id='')])
         series=self.app.library.channels(view='series')[0]

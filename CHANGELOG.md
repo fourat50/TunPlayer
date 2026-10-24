@@ -1,5 +1,11 @@
 # Historique
 
+## 1.3.1
+
+- Démarrage vidéo différé jusqu’à l’affichage du lecteur et à la stabilisation de sa taille ; une fenêtre masquée ou un retour au catalogue ne déclenchent plus le chargement dans une surface invisible.
+- Zone vidéo dédiée au dessin externe de mpv, sans double tampon GTK ; création et géométrie natives synchronisées avant l’intégration X11.
+- Tests de non-régression supplémentaires pour fenêtre masquée, navigation pendant le démarrage et redimensionnement initial.
+
 ## 1.3.0
 
 - Verrouillage des catégories Télévision, Films, Séries et Radio par PIN de 4 à 8 chiffres ; accès contrôlé depuis la recherche, les favoris, le lecteur et les téléchargements.
