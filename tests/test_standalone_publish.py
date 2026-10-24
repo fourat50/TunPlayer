@@ -19,6 +19,7 @@ class StandalonePublication(unittest.TestCase):
         info=dict(version='1.0.0',source_commit='source-commit')
         bundle=self.directory/'TunPlayer-1.0.0-linux-x86_64';bundle.mkdir()
         (bundle/'build-info.json').write_text(json.dumps(info))
+        (bundle/'README.txt').write_text('Standalone instructions')
         with tarfile.open(self.archive,'w:gz') as stream:stream.add(bundle,arcname=bundle.name)
         sums=self.directory/'Standalone-SHA256SUMS'
         sums.write_text(''.join(publish_standalone.digest(p)+'  '+p.name+'\n' for p in (self.package,self.archive)))

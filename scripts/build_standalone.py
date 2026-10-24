@@ -89,6 +89,7 @@ def build(ref,destination):
         if name=='run.py' or name in ('assets/style.css','assets/tunplayer.svg','assets/demo.mp4') or (name.startswith('tunplayer/') and name.endswith('.py')):
             target=bundle/'app'/name;target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(blob(name))
     for name in ('AppRun','bootstrap.py','README.txt'):copy(RECIPE/name,bundle/name)
+    (bundle/'README.txt').write_text((RECIPE/'README.txt').read_text().format(version=version,source_commit=commit),encoding='utf-8')
     (bundle/'AppRun').chmod(0o755)
     # Include distribution copyright/license notices and exact package versions.
     packages={'python3.12-minimal','libpython3.12-minimal','libpython3.12-stdlib','python3-gi','python3-gi-cairo','python3-cairo','gir1.2-gtk-3.0','fonts-dejavu-core','ca-certificates'}

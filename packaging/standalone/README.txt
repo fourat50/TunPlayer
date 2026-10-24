@@ -1,4 +1,4 @@
-TunPlayer 1.0.0 - Linux x86_64 autonome
+TunPlayer {version} - Linux x86_64 autonome
 
 Python 3.12, PyGObject, Cairo, GTK 3, mpv, FFmpeg, decodeurs SVG,
 certificats HTTPS et une police sont inclus dans le paquet.
@@ -8,11 +8,12 @@ Le serveur X11 (ou XWayland), les pilotes GPU/audio et le noyau restent
 fournis par Linux. Compatibilite avec les autres distributions non validee.
 
 Archive portable : extraire puis lancer ./AppRun, sans sudo.
-Paquet .deb : sudo apt install ./tunplayer_1.0.0+standalone1_amd64.deb
+Paquet .deb : sudo apt install ./tunplayer_{version}+standalone1_amd64.deb
 Le .deb remplace le paquet TunPlayer leger. Votre bibliotheque est conservee.
 Ne pas lancer le lecteur avec sudo. Aucune playlist n'est incluse.
 
-Le programme est celui du tag v1.0.0. La recette ajoute seulement le runtime.
+Application {version}, commit source {source_commit}.
+La recette ajoute le runtime sans modifier le programme de ce commit.
 build-info.json inventorie les fichiers natifs et versions des paquets.
 Les licences tierces sont dans licenses/ (dont les licences GPL/LGPL).
 Les bibliotheques restent des fichiers partages remplacables.

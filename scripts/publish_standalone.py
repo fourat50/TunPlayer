@@ -64,7 +64,7 @@ def publish(directory,push_source=False):
         temporary=Path(temporary)
         (temporary/'existing').mkdir();(temporary/'verified').mkdir()
         readme=temporary/'Standalone-README.txt'
-        readme.write_bytes((ROOT/'packaging/standalone/README.txt').read_bytes())
+        readme.write_bytes((directory/f'TunPlayer-{version}-linux-x86_64/README.txt').read_bytes())
         assets=(package,archive,sums,readme)
         # Check all name collisions before uploading any missing asset.
         for asset in assets:
