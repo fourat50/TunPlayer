@@ -158,8 +158,16 @@ miroirs HTTPS et cache disque limité à 48 réponses. Les stations marquées en
 Cette fonctionnalité appartient aux sources **1.1.0**. Les paquets de la
 release 1.0.0 ne la contiennent pas. Pour construire le programme courant,
 utilisez `--ref HEAD` avec les scripts de construction, après avoir commité
-les sources. Les scripts de publication de la release 1.0.0 restent réservés
-à cette ancienne version.
+les sources. Pour publier la version Radio avec les fichiers déjà vérifiés :
+
+```bash
+python3 scripts/publish_standalone.py --directory dist/radio-1.1.0 --push-source
+```
+
+La commande pousse `main` et le tag `v1.1.0`, qui désigne le commit du paquet,
+prépare la release en brouillon, joint les installateurs et leurs empreintes,
+puis vérifie les téléchargements avant publication. Les versions et fichiers
+existants ne sont pas écrasés.
 
 ## Interface
 

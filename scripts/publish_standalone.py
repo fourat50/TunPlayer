@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Publish verified standalone Linux files alongside the original 1.0.0 release."""
+"""Publish a verified standalone Linux release, preserving existing assets."""
 import argparse
 import hashlib
 import json
@@ -28,9 +28,12 @@ def publish(directory,push_source=False):
     report=json.loads((directory/'standalone-verification.json').read_text())
     for flag in ('ok','relocated','portable_archive','isolated_install_remove'):
         if report.get(flag) is not True:raise ValueError('Verification incomplete : '+flag)
-    info=json.loads((directory/'TunPlayer-1.0.0-linux-x86_64/build-info.json').read_text())
+    manifests=list(directory.glob('TunPlayer-*-linux-x86_64/build-info.json'))
+    if len(manifests)!=1:raise ValueError('Un unique dossier de construction est requis.')
+    info=json.loads(manifests[0].read_text())
     version=info['version']
-    if version!='1.0.0':raise ValueError('Cette publication cible uniquement la version 1.0.0.')
+    if not isinstance(version,str) or not re.fullmatch(r'\d+\.\d+\.\d+',version):raise ValueError('Version invalide.')
+    if manifests[0].parent.name!=f'TunPlayer-{version}-linux-x86_64':raise ValueError('Le dossier differe de la version du manifeste.')
     tag='v'+version
     package=directory/f'tunplayer_{version}+standalone1_amd64.deb'
     archive=directory/f'TunPlayer-{version}-linux-x86_64-standalone.tar.gz'
@@ -49,16 +52,27 @@ def publish(directory,push_source=False):
         if manifest is None or json.load(manifest)!=info:raise ValueError('Le manifeste de l’archive differe de celui de la construction.')
     print('Fichiers locaux et rapport de verification : OK.',flush=True)
     run(['gh','auth','status'])
-    source=run(['gh','api',f'repos/{REPOSITORY}/commits/{tag}','--jq','.sha']).strip()
-    if source!=info['source_commit']:raise ValueError('Le tag GitHub differe du programme embarque.')
-    release=json.loads(run(['gh','release','view',tag,'--repo',REPOSITORY,'--json','assets,body,url,isDraft']))
-    if release['isDraft']:raise ValueError('La release Linux existante doit etre publiee.')
     if push_source:
         origin=run(['git','remote','get-url','origin']).strip()
         if origin not in (f'https://github.com/{REPOSITORY}.git',f'https://github.com/{REPOSITORY}',f'git@github.com:{REPOSITORY}.git'):
             raise ValueError('Le depot origin est different du depot de publication.')
         if run(['git','status','--porcelain']).strip():raise ValueError('Commitez les changements avant de publier.')
-        run(['git','push','origin','main'])
+        local=run(['git','rev-parse','--verify','--end-of-options',info['source_commit']+'^{commit}']).strip()
+        if local!=info['source_commit']:raise ValueError('Le commit de construction est introuvable.')
+        run(['git','merge-base','--is-ancestor',local,'main'])
+        if run(['git','tag','--list',tag]).strip():
+            if run(['git','rev-parse',tag+'^{commit}']).strip()!=local:raise ValueError('Le tag local differe du paquet valide. Aucun tag n’a ete deplace.')
+        else:run(['git','tag','-a',tag,local,'-m',f'TunPlayer {version} — Linux'])
+        run(['git','push','--atomic','origin','main','refs/tags/'+tag])
+    source=run(['gh','api',f'repos/{REPOSITORY}/commits/{tag}','--jq','.sha']).strip()
+    if source!=info['source_commit']:raise ValueError('Le tag GitHub differe du programme embarque.')
+    releases=json.loads(run(['gh','release','list','--repo',REPOSITORY,'--limit','100','--json','tagName']))
+    if not any(item['tagName']==tag for item in releases):
+        notes=ROOT/'packaging/releases'/f'{tag}.md'
+        if not notes.is_file():raise ValueError('Notes de release absentes : '+str(notes))
+        run(['gh','release','create',tag,'--repo',REPOSITORY,'--verify-tag','--draft',
+             '--title',f'TunPlayer {version} — Linux','--notes-file',notes])
+    release=json.loads(run(['gh','release','view',tag,'--repo',REPOSITORY,'--json','assets,body,url,isDraft']))
     existing={asset['name'] for asset in release['assets']}
     with tempfile.TemporaryDirectory(prefix='tunplayer-publish-standalone-') as temporary:
         temporary=Path(temporary)
@@ -76,7 +90,7 @@ def publish(directory,push_source=False):
         for asset in assets:
             run(['gh','release','download',tag,'--repo',REPOSITORY,'--pattern',asset.name,'--dir',temporary/'verified'])
             if digest(temporary/'verified'/asset.name)!=digest(asset):raise ValueError('Verification du telechargement echouee : '+asset.name)
-        marker='<!-- tunplayer-linux-standalone-1.0.0 -->'
+        marker=f'<!-- tunplayer-linux-standalone-{version} -->'
         # Fetch again to preserve edits made while large files were uploading.
         latest=json.loads(run(['gh','release','view',tag,'--repo',REPOSITORY,'--json','body']))
         if marker not in latest['body']:
@@ -91,6 +105,7 @@ def publish(directory,push_source=False):
                 'La lecture graphique complete et les autres distributions restent a valider.\n'
             notes=temporary/'notes.md';notes.write_text(body,encoding='utf-8')
             run(['gh','release','edit',tag,'--repo',REPOSITORY,'--notes-file',notes])
+        if release['isDraft']:run(['gh','release','edit',tag,'--repo',REPOSITORY,'--draft=false','--latest'])
     print('Version autonome publiee et fichiers distants verifies : '+release['url'])
 
 
