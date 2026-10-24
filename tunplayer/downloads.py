@@ -51,6 +51,8 @@ def plan(channels,directory,series=None):
         path=root/f'{prefix}{safe_name(channel["name"])}-{token}{extension}'
         identity=hashlib.sha256((str(path)+'\0'+url).encode()).hexdigest()
         result.append(dict(id=identity,channel_id=channel['id'],name=channel['name'],url=url,path=str(path),
+            category_kind='series' if channel['kind']=='episode' else channel['kind'],
+            category_name=(series or channel).get('group_name',''),
             state='queued',downloaded=0,total=0,etag='',error='',hls=hls,created=time.time()))
     return result
 

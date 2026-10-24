@@ -29,6 +29,8 @@ from .navigation import NavigationMemory
 from .player_catalog import PlayerCatalog
 from .radio_ui import RadioMixin
 from .download_ui import DownloadMixin
+from .access_ui import AccessMixin
+from .interactions import InteractionMixin
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -75,7 +77,7 @@ def navigation(text, symbol, callback):
     w.get_accessible().set_name(text)
     return w
 
-class App(DownloadMixin,RadioMixin,Gtk.Application):
+class App(AccessMixin,InteractionMixin,DownloadMixin,RadioMixin,Gtk.Application):
     def __init__(self, args):
         super().__init__(application_id='tn.tunplayer.desktop', flags=Gio.ApplicationFlags.NON_UNIQUE if args.data_dir else Gio.ApplicationFlags.FLAGS_NONE)
         self.args = args
@@ -131,6 +133,7 @@ class App(DownloadMixin,RadioMixin,Gtk.Application):
         self.media_loaded = False; self.resume_target = None; self.resume_deadline = 0
         self.init_radio()
         self.init_downloads()
+        self.init_access();self.init_interactions()
         self.connect('activate',self.activate)
 
     def write_error(self,_):
@@ -153,7 +156,7 @@ class App(DownloadMixin,RadioMixin,Gtk.Application):
         self.window = Gtk.ApplicationWindow(application=self, title='TunPlayer — Votre télévision, autrement')
         self.window.set_default_size(1380,900); self.window.set_size_request(1080,700)
         self.window.set_icon_from_file(str(ROOT/'assets/tunplayer.svg'))
-        self.window.connect('delete-event',self.close)
+        self.window.connect('delete-event',self.request_close)
         self.window.connect('key-press-event',self.key)
         self.window.add_events(Gdk.EventMask.BUTTON_PRESS_MASK|Gdk.EventMask.SCROLL_MASK)
         self.window.connect('button-press-event',self.player_activity)
@@ -230,6 +233,7 @@ class App(DownloadMixin,RadioMixin,Gtk.Application):
         name_renderer=Gtk.CellRendererText();name_renderer.set_property('ellipsize',3);name_renderer.set_property('ypad',10)
         name_renderer.set_property('max-width-chars',22)
         name_column=Gtk.TreeViewColumn('Catégorie',name_renderer,text=0);name_column.set_expand(True)
+        name_column.set_cell_data_func(name_renderer,self.category_cell)
         self.category_tree.append_column(name_column)
         count_renderer=Gtk.CellRendererText();count_renderer.set_property('xalign',1.0);count_renderer.set_property('scale',.8)
         self.category_tree.append_column(Gtk.TreeViewColumn('Contenus',count_renderer,text=1))
@@ -237,6 +241,8 @@ class App(DownloadMixin,RadioMixin,Gtk.Application):
         category_scroll=Gtk.ScrolledWindow();category_scroll.set_policy(Gtk.PolicyType.NEVER,Gtk.PolicyType.AUTOMATIC)
         category_scroll.add(self.category_tree);self.category_panel.pack_start(category_scroll,True,True,0)
         self.build_radio_country()
+        self.category_lock_button=button('Verrouiller',self.toggle_category_lock,'small',symbol='lock')
+        self.category_panel.pack_start(self.category_lock_button,False,False,0)
         self.workspace.pack1(self.category_panel,resize=False,shrink=False)
         self.content = box(True,22,'content'); self.scroll.add(self.content)
         self.workspace.pack2(self.scroll,resize=True,shrink=True)
@@ -250,6 +256,8 @@ class App(DownloadMixin,RadioMixin,Gtk.Application):
         self.video = Gtk.DrawingArea(); self.video.set_size_request(640,320); self.video.set_hexpand(True); self.video.set_vexpand(True)
         self.video.set_has_window(True)
         self.video.set_can_focus(True)
+        self.video.add_events(Gdk.EventMask.BUTTON_PRESS_MASK|Gdk.EventMask.SCROLL_MASK|Gdk.EventMask.SMOOTH_SCROLL_MASK)
+        self.video.connect('button-press-event',self.video_button);self.video.connect('scroll-event',self.volume_scroll)
         self.video_stack=Gtk.Stack();self.video_stack.set_transition_type(Gtk.StackTransitionType.NONE)
         self.video_stack.set_hhomogeneous(False);self.video_stack.set_vhomogeneous(False)
         self.video_stack.add_named(self.video,'video')
@@ -289,7 +297,7 @@ class App(DownloadMixin,RadioMixin,Gtk.Application):
         self.next_bar.pack_start(button('Annuler',self.cancel_next,'small'),False,False,0)
         self.player_info_stack.add_named(self.next_bar,'next')
         info=box(spacing=16,css='player-info');self.player_info=info
-        self.playback_back_button=button('',self.back_from_playback,'player-back',symbol='back',
+        self.playback_back_button=button('Fermer le contenu',self.back_from_playback,'player-back',symbol='back',
             tooltip='Arrêter la lecture et revenir aux chaînes, aux épisodes ou à la fiche du film')
         info.pack_start(self.playback_back_button,False,False,0)
         identity=box(True,5)
@@ -323,10 +331,17 @@ class App(DownloadMixin,RadioMixin,Gtk.Application):
         controls.get_style_context().add_class('player-controls')
         self.player_hud.pack_start(controls,False,False,0)
         controls.attach(self.player_prev_button,0,0,1,1)
-        volume=Gtk.VolumeButton();volume.set_value(self.volume)
-        volume.get_style_context().add_class('player-tool')
-        volume.set_tooltip_text('Volume');volume.get_accessible().set_name('Volume')
-        volume.connect('value-changed',self.volume_changed)
+        volume=box(spacing=6)
+        self.mute_button=Gtk.Button();self.mute_image=icon('audio',19,'#e4e7ed');self.mute_button.add(self.mute_image)
+        self.mute_button.get_style_context().add_class('player-tool');self.mute_button.connect('clicked',lambda _:self.toggle_mute())
+        self.volume_slider=Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL,0,100,1)
+        self.volume_slider.set_draw_value(False);self.volume_slider.set_size_request(130,-1);self.volume_slider.set_value(self.volume*100)
+        self.volume_slider.get_accessible().set_name('Volume de 0 à 100 pour cent')
+        self.volume_slider.set_tooltip_text('Volume · molette, ↑ / ↓ · M pour couper le son')
+        self.volume_slider.connect('value-changed',self.volume_slider_changed);self.volume_slider.connect('scroll-event',self.volume_scroll)
+        self.volume_value=label('','player-time');self.volume_value.set_width_chars(5)
+        volume.pack_start(self.mute_button,False,False,0);volume.pack_start(self.volume_slider,False,False,0)
+        volume.pack_start(self.volume_value,False,False,0);self.update_volume_controls()
         transport=box(spacing=8,css='player-transport')
         transport.set_halign(Gtk.Align.CENTER);transport.set_valign(Gtk.Align.CENTER)
         controls.attach(transport,1,0,1,1)
@@ -392,7 +407,7 @@ class App(DownloadMixin,RadioMixin,Gtk.Application):
         self.bottom.pack_start(label('M3U · XTREAM · XMLTV','caption'),False,False,0)
         self.window.show_all();self.player_info_stack.set_visible_child_name('identity')
         self.apply_sidebar(); self.toast_label.hide(); self.playback.hide(); self.return_button.hide(); self.navigate('home')
-        GLib.timeout_add(500,self.tick)
+        GLib.timeout_add(100,self.tick)
         self.idle_timer=GLib.timeout_add(100,self.check_player_idle)
         self.download_timer=GLib.timeout_add(500,self.download_tick)
         if self.args.screenshot: GLib.timeout_add(900,self.screenshot)
@@ -522,6 +537,7 @@ class App(DownloadMixin,RadioMixin,Gtk.Application):
                 if (self.group is None and row[3]) or (not row[3] and row[0]==self.group):
                     self.category_tree.get_selection().select_path(row.path);break
         finally:self.category_updating=False
+        self.update_category_lock()
 
     def search_changed(self, widget):
         query=widget.get_text().strip()
@@ -560,6 +576,11 @@ class App(DownloadMixin,RadioMixin,Gtk.Application):
         if self.paint_timer:GLib.source_remove(self.paint_timer);self.paint_timer=None
         if self.catalog_restore_timer:GLib.source_remove(self.catalog_restore_timer);self.catalog_restore_timer=None
         if self.artwork:self.artwork.retire()
+        if self.view in ('live','movie','series','radio') and self.group is not None:
+            probe=dict(kind=self.view if self.view!='radio' else 'live',group_name=self.group,radio=self.view=='radio',tags=[self.group])
+            if self.content_locked(probe):
+                self.radio_tasks.cancel();clear(self.content);self.catalog_spinner.stop();self.catalog_spinner.hide()
+                self.update_category_lock();self.render_access_gate(probe);self.content.show_all();return
         if self.view not in ('home','live','movie','series','favorites','history'):
             self.catalog_spinner.stop();self.catalog_spinner.hide()
             self.favorite_widgets.clear()
@@ -787,6 +808,7 @@ class App(DownloadMixin,RadioMixin,Gtk.Application):
         self.scroll.get_vadjustment().set_value(0)
 
     def change_group(self, group):
+        if group is not None and not self.ensure_category_access(self.view,group):self.render();return
         self.group=group; self.page=0; self.render()
 
     def change_source(self, source_id):
@@ -880,6 +902,7 @@ class App(DownloadMixin,RadioMixin,Gtk.Application):
         return 'Saisons & épisodes' if channel['kind']=='series' and channel['url'].startswith('xtream-series:') else 'Regarder'
 
     def card(self, channel):
+        if self.content_locked(channel):return self.locked_media_card(channel)
         poster=channel['kind']!='live'
         card=box(True,0,'card');card.set_size_request(144 if poster else 188 if self.compact else 210,-1)
         if poster:card.get_style_context().add_class('poster-card')
@@ -915,6 +938,7 @@ class App(DownloadMixin,RadioMixin,Gtk.Application):
         return card
 
     def list_card(self, channel):
+        if self.content_locked(channel):return self.locked_media_card(channel)
         row=box(spacing=16,css='list-card');poster=channel['kind']!='live'
         row.pack_start(self.media_art(channel,width=62 if poster else 108,height=92 if poster else 72),False,False,0)
         details=box(True,7);details.set_valign(Gtk.Align.CENTER)
@@ -941,6 +965,7 @@ class App(DownloadMixin,RadioMixin,Gtk.Application):
         else:self.play(channel)
 
     def open_details(self,channel):
+        if not self.ensure_access(channel):return
         if self.view=='details' and self.detail_id==channel['id'] and self.detail_loading:return
         self.detail_tasks.cancel();self.detail_loading=False
         fresh=self.library.channel(channel['id'])
@@ -991,6 +1016,7 @@ class App(DownloadMixin,RadioMixin,Gtk.Application):
     def render_details(self):
         channel=self.library.channel(self.detail_id) if self.detail_id else None
         if not channel:self.empty('Ce contenu n’est plus disponible.','Choisissez un autre titre dans votre bibliothèque.');return
+        if self.content_locked(channel):self.render_access_gate(channel);return
         destination='series' if channel['kind']=='series' else 'movie'
         back=button('Retour aux séries' if destination=='series' else 'Retour aux films',lambda:self.navigate(destination),'ghost',symbol='back')
         back.set_halign(Gtk.Align.START);self.content.pack_start(back,False,False,0)
@@ -1022,6 +1048,7 @@ class App(DownloadMixin,RadioMixin,Gtk.Application):
         return self.library.continue_episode(series_id)
 
     def open_series(self, channel, force=False):
+        if not self.ensure_access(channel):return
         self.detail_tasks.cancel();self.detail_loading=False
         if self.series_id!=channel['id']:
             self.episode_query='';self.navigation.pages.pop('episodes',None)
@@ -1048,6 +1075,7 @@ class App(DownloadMixin,RadioMixin,Gtk.Application):
         series=self.library.channel(self.series_id) if self.series_id else None
         if not series:
             self.empty('Cette série n’est plus disponible.','Actualisez la source ou choisissez une autre série.');return
+        if self.content_locked(series):self.render_access_gate(series);return
         panel=box(spacing=22,css='series-detail')
         panel.pack_start(self.media_art(series,width=180,height=270),False,False,0)
         details=self.detail_copy(series)
@@ -1315,6 +1343,8 @@ class App(DownloadMixin,RadioMixin,Gtk.Application):
         count=self.library.guide_count(self.query)
         self.page=min(self.page,max(0,(count-1)//self.page_size))
         for channel in self.library.guide_channels(self.query,limit=self.page_size,offset=self.page*self.page_size):
+            if self.content_locked(dict(channel,kind='live')):
+                self.content.pack_start(self.locked_media_card(dict(channel,kind='live')),False,False,0);continue
             programmes=self.library.programmes(channel['tvg_id']) if channel['tvg_id'] else []
             if not programmes: continue
             row=box(spacing=22,css='panel'); left=box(True,8); left.set_size_request(165,-1)
@@ -1337,6 +1367,7 @@ class App(DownloadMixin,RadioMixin,Gtk.Application):
 
     def render_settings(self):
         self.content.pack_start(label('Faites comme chez vous.','section-title'),False,False,0)
+        self.content.pack_start(self.security_settings(),False,False,0)
         automation=box(True,12,'panel')
         automation.pack_start(label('Une lecture qui continue','section-title'),False,False,0)
         for title,active,callback,copy in [
@@ -1506,7 +1537,7 @@ class App(DownloadMixin,RadioMixin,Gtk.Application):
         if not hasattr(self,'player_prev_button'):return
         for direction,widget,title in [('previous',self.player_prev_button,self.player_prev_name),('next',self.player_next_button,self.player_next_name)]:
             target=self.player_neighbors.get(direction)
-            text=target['name'] if target else 'Aucun contenu précédent' if direction=='previous' else 'Aucun contenu suivant'
+            text='Contenu verrouillé' if target and self.content_locked(target) else target['name'] if target else 'Aucun contenu précédent' if direction=='previous' else 'Aucun contenu suivant'
             title.set_text(text);widget.set_sensitive(target is not None)
             description=('Lire le précédent : ' if direction=='previous' else 'Lire le suivant : ')+text if target else text
             if target:description+=' · '+('Page ↑' if direction=='previous' else 'Page ↓')
@@ -1540,7 +1571,10 @@ class App(DownloadMixin,RadioMixin,Gtk.Application):
                 self.browser_group_signature=signature;self.browser_categories.remove_all()
                 self.browser_groups=[None]+[g['group_name'] for g in data['groups']]
                 self.browser_categories.append_text('Toutes les catégories')
-                for group in data['groups']:self.browser_categories.append_text(browser_category_caption(group,self.browser_kind=='radio'))
+                for group in data['groups']:
+                    title=browser_category_caption(group,self.browser_kind=='radio')
+                    if self.category_protected(self.browser_kind,group['group_name']):title='🔒 '+title
+                    self.browser_categories.append_text(title)
             self.browser_categories.set_active(self.browser_groups.index(self.browser_group) if self.browser_group in self.browser_groups else 0)
             parent=data['parent'];self.browser_parent.set_visible(parent is not None)
             self.browser_current_name.set_text('En cours : '+self.current['name'])
@@ -1551,7 +1585,7 @@ class App(DownloadMixin,RadioMixin,Gtk.Application):
             for row in data['rows']:
                 playing=self.current and row['id'] in (self.current['id'],self.current.get('parent_id'))
                 state='▶' if playing else '›' if row['url'].startswith('xtream-series:') else ''
-                it=self.browser_store.append([row['id'],row['name'],state])
+                it=self.browser_store.append([row['id'],'🔒 Contenu verrouillé' if self.content_locked(row) else row['name'],state])
                 if playing:
                     self.browser_tree.get_selection().select_iter(it)
                     if focus:self.browser_tree.scroll_to_cell(self.browser_store.get_path(it),None,True,.5,0)
@@ -1563,7 +1597,9 @@ class App(DownloadMixin,RadioMixin,Gtk.Application):
 
     def player_browser_category_changed(self,combo):
         if self.browser_updating or combo.get_active()<0:return
-        self.browser_group=self.browser_groups[combo.get_active()];self.browser_series=None;self.browser_page=0
+        group=self.browser_groups[combo.get_active()]
+        if group is not None and not self.ensure_category_access(self.browser_kind,group):self.refresh_player_catalog();return
+        self.browser_group=group;self.browser_series=None;self.browser_page=0
         self.browser_query='';self.browser_search.set_text('');self.player_activity();self.refresh_player_catalog()
 
     def player_browser_search_changed(self,entry):
@@ -1581,6 +1617,7 @@ class App(DownloadMixin,RadioMixin,Gtk.Application):
     def player_browser_activate(self,tree,path,column):
         row=self.browser_rows.get(self.browser_store[path][0])
         if not row:return
+        if not self.ensure_access(row):return
         if row.get('radio'):
             self.radio_play_rows=list(self.browser_rows.values());self.play(row);return
         if not row['url'].startswith('xtream-series:'):self.play(row);return
@@ -1616,7 +1653,7 @@ class App(DownloadMixin,RadioMixin,Gtk.Application):
                 raise RuntimeError('L’intégration vidéo native de ce système n’est pas encore disponible.')
             player=Player(window_id=window_id)
             try:
-                player.set('volume',self.volume*100);player.set_aspect(self.aspect_mode)
+                player.set('volume',self.volume*100);player.set('mute','yes' if self.muted else 'no');player.set_aspect(self.aspect_mode)
             except RuntimeError:
                 player.close();raise
             self.player=player
@@ -1669,6 +1706,10 @@ class App(DownloadMixin,RadioMixin,Gtk.Application):
             description='Afficher ou masquer les '+title.lower()
             self.player_browse_button.set_tooltip_text(description)
             self.player_browse_button.get_accessible().set_name(description)
+        if hasattr(self,'playback_back_button'):
+            title='Fermer le fichier' if local else 'Arrêter la radio' if radio else 'Arrêter la chaîne' if live else 'Fermer l’épisode' if kind=='episode' else 'Fermer le film'
+            self.playback_back_button.get_child().get_children()[1].set_text(title)
+            self.playback_back_button.set_tooltip_text('Arrêter uniquement ce contenu et revenir à sa liste. L’application reste ouverte.')
 
     def update_pause_visual(self,paused):
         if not hasattr(self,'pause_image') or self.pause_visual==paused:return
@@ -1780,6 +1821,7 @@ class App(DownloadMixin,RadioMixin,Gtk.Application):
         if not channel.get('demo') and not channel.get('radio') and not channel.get('local_download'):
             channel=self.library.channel(channel['id'])
             if channel is None:self.notify('Ce contenu a été retiré de la source.',True);return
+        if not self.ensure_access(channel):return
         if channel['kind']=='series' and channel['url'].startswith('xtream-series:'):
             self.open_series(channel);return
         if local_position is not None:channel['position']=local_position
@@ -1967,11 +2009,7 @@ class App(DownloadMixin,RadioMixin,Gtk.Application):
         self.seeking=False; return False
 
     def volume_changed(self, _, value):
-        self.player_activity()
-        self.volume=value;self.persist_setting('volume',value)
-        if self.player:
-            try:self.player.set('volume',round(value*100))
-            except RuntimeError:pass
+        self.set_volume(value)
 
     def tracks_dialog(self):
         self.player_activity()
@@ -2051,7 +2089,11 @@ class App(DownloadMixin,RadioMixin,Gtk.Application):
         if not self.player:return True
         events=self.player.events()
         for index,(kind,message) in enumerate(events):
-            if kind=='error':
+            if kind=='input':
+                self.player_input(message)
+                if self.closing:return False
+                if not self.player or not self.current:return True
+            elif kind=='error':
                 if not any(item[0]=='loaded' for item in events[index+1:]):self.handle_playback_failure(message)
             elif kind=='loaded' and self.accepting_load and self.current:
                 self.media_loaded=True;self.load_deadline=None;self.reconnect.loaded()
@@ -2111,7 +2153,7 @@ class App(DownloadMixin,RadioMixin,Gtk.Application):
             self.player_status.set_text('Mise en mémoire tampon…' if buffering else 'Pause' if paused else 'Lecture en cours')
         self.refresh_diagnostics()
         self.update_playback_banners();self.tick_count+=1
-        if self.tick_count%20==0:self.save_position()
+        if self.tick_count%100==0:self.save_position()
         return True
 
     def key(self, _, event):
@@ -2119,11 +2161,7 @@ class App(DownloadMixin,RadioMixin,Gtk.Application):
         name=Gdk.keyval_name(event.keyval)
         settings_open=hasattr(self,'player_settings') and self.player_settings.get_visible()
         if name=='Escape' and (settings_open or self.view=='player'):
-            action=escape_action(settings_open,self.player_browser_visible(),self.fullscreen)
-            if action=='settings':self.player_settings.popdown()
-            elif action=='browser':self.toggle_player_browser()
-            elif action=='fullscreen':self.toggle_fullscreen()
-            return action is not None
+            self.player_escape();return True
         if settings_open:return False
         if name=='k' and event.state&Gdk.ModifierType.CONTROL_MASK:
             if self.view=='player' and hasattr(self,'browser_search'):
@@ -2131,11 +2169,15 @@ class App(DownloadMixin,RadioMixin,Gtk.Application):
                 self.browser_search.grab_focus()
             else:self.search.grab_focus()
             return True
+        if name in ('q','Q') and event.state&Gdk.ModifierType.CONTROL_MASK:self.request_close();return True
         if isinstance(self.window.get_focus(),Gtk.Entry):return False
         focus=self.window.get_focus()
+        if isinstance(focus,Gtk.Range) and name in ('Left','Right','Up','Down','Home','End'):return False
         if focus and hasattr(self,'player_split') and focus==self.player_split and name in ('Left','Right','Up','Down','Page_Up','Page_Down','Home','End','Return','KP_Enter'):return False
         if focus and hasattr(self,'player_browser') and focus.is_ancestor(self.player_browser) and name in ('Left','Right','Up','Down','Page_Up','Page_Down','Home','End','Return','KP_Enter'):return False
         if name=='space' and self.view=='player':self.command('cycle','pause');return True
+        if self.view=='player' and name in ('m','M'):self.toggle_mute();return True
+        if self.view=='player' and name in ('Up','Down'):self.step_volume(1 if name=='Up' else -1);return True
         if self.view=='player' and name in ('Page_Up','Page_Down'):
             self.play_neighbor('previous' if name=='Page_Up' else 'next');return True
         if self.view=='player' and name in ('b','B'):self.toggle_player_browser();return True
@@ -2147,6 +2189,7 @@ class App(DownloadMixin,RadioMixin,Gtk.Application):
     def close(self, *_):
         if self.closing: return False
         self.closing=True
+        if hasattr(self,'window'):self.window.hide()
         self.cancel_stream_start()
         if self.download_timer:GLib.source_remove(self.download_timer);self.download_timer=None
         if self.download_manager:self.download_manager.close()

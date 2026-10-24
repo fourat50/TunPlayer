@@ -1,5 +1,14 @@
 # Historique
 
+## 1.3.0
+
+- Verrouillage des catégories Télévision, Films, Séries et Radio par PIN de 4 à 8 chiffres ; accès contrôlé depuis la recherche, les favoris, le lecteur et les téléchargements.
+- PIN stocké sous forme d’empreinte scrypt salée, délai après cinq erreurs, modification et désactivation avec vérification du PIN actuel.
+- Déverrouillage temporaire pour la session et action « Reverrouiller maintenant » dans les préférences.
+- Bouton explicite pour fermer le contenu ; choix entre arrêter la lecture et quitter l’application lors de la fermeture de la fenêtre pendant une lecture.
+- Curseur de volume visible, pourcentage, Muet avec conservation du niveau, molette et touches ↑ / ↓ par pas de 5 %.
+- Double-clic dans la vidéo pour basculer entre plein écran et mode normal, y compris lorsque mpv reçoit les événements de la zone vidéo native.
+
 ## 1.2.0
 
 - Téléchargement d’un film depuis sa fiche, d’un épisode depuis sa liste, ou d’une saison complète après sélection.

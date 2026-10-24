@@ -2,7 +2,7 @@
 
 Lecteur IPTV de bureau, développé d’abord pour Linux. Interface française graphite et citron vert, panorama vectoriel original, cartes illustrées et bibliothèque locale. Projet inspiré des usages d’[UHF](https://getuhf.com/), avec une identité et une implémentation propres.
 
-**Version 1.2.0 : téléchargements de films, saisons et épisodes, lecture locale et transitions du lecteur corrigées. Radio, IPTV et distribution autonome Linux.**
+**Version 1.3.0 : catégories protégées par PIN, fermeture du contenu clarifiée, volume visible et double-clic pour le plein écran. Radio, IPTV, téléchargements et distribution autonome Linux.**
 
 ## Démarrer sous Linux
 
@@ -323,7 +323,17 @@ Le panneau est redimensionnable en faisant glisser sa séparation ; la largeur c
 
 **Inactivité :** après cinq secondes sans action dans le lecteur chargé, le curseur, la barre de temps et les commandes disparaissent, en fenêtre comme en plein écran. Un mouvement de souris, un clic ou une touche les fait réapparaître. Une manipulation de la barre de temps ou un menu ouvert maintient les commandes visibles. Le chargement, les erreurs et la sortie du lecteur rétablissent leur visibilité. Le suivi du pointeur couvre aussi la fenêtre native intégrée de mpv. La console est retirée de la disposition lorsqu’elle se masque : la vidéo récupère toute sa hauteur et s’agrandit. Au réveil des commandes, elle retrouve sa place au-dessus de la console. Les messages de reconnexion et d’épisode suivant utilisent également un emplacement réservé. Le choix de reprise maintient les commandes visibles.
 
-**Raccourcis :** `Espace` pause, `F` plein écran, `B` afficher / masquer la liste, `A` parcourir les formats d’image, `←` / `→` déplacement de dix secondes, `Page ↑` / `Page ↓` contenu précédent / suivant hors de la liste, `Ctrl+K` recherche. `Échap` ferme d’abord le menu, puis la liste, puis le plein écran. Les champs de recherche, la liste et la séparation redimensionnable conservent leurs touches de navigation natives ; les boutons affichent un indicateur de focus.
+**Raccourcis :** `Espace` pause, `F` ou double-clic dans la vidéo pour le plein écran / mode normal, `M` muet, molette ou `↑` / `↓` volume par pas de 5 %, `B` afficher / masquer la liste, `A` parcourir les formats d’image, `←` / `→` déplacement de dix secondes, `Page ↑` / `Page ↓` contenu précédent / suivant hors de la liste, `Ctrl+K` recherche. `Échap` ferme d’abord le menu, puis la liste, puis le plein écran, puis le contenu. Les champs de recherche, la liste, les curseurs et la séparation redimensionnable conservent leurs touches de navigation natives ; les boutons affichent un indicateur de focus.
+
+Le volume est affiché par un curseur et un pourcentage, avec un bouton Muet qui conserve le niveau précédent. Le bouton de retour indique explicitement **Arrêter la chaîne**, **Fermer le film** ou **Fermer l’épisode**. Il arrête le contenu et ramène à sa liste ou sa fiche. La croix de la fenêtre et `Ctrl+Q` proposent de fermer seulement le contenu, de quitter l’application ou d’annuler si une lecture est active. Quitter avec des téléchargements actifs demande également confirmation.
+
+### Catégories protégées par PIN
+
+Dans Télévision, Films, Séries ou Radio, sélectionnez une catégorie dans le menu vertical et cliquez sur **Verrouiller** en bas du panneau. Créez un PIN de 4 à 8 chiffres lors du premier verrouillage. Le cadenas reste associé à la catégorie et au type de contenu, indépendamment de la source et de la casse du nom. Pour la radio, les catégories correspondent aux genres ; une station portant plusieurs genres est protégée si l’un d’eux est verrouillé.
+
+Un PIN valide autorise la catégorie pendant la session. Dans **Préférences → Protection des catégories**, vous pouvez modifier le PIN, désactiver la protection ou **Reverrouiller maintenant**. Cette dernière action arrête une lecture protégée et met ses téléchargements actifs en pause. Les catégories se reverrouillent au prochain lancement. Le PIN est également demandé pour retirer un verrou, et cinq erreurs consécutives déclenchent un délai avant un nouvel essai.
+
+Les accès par recherche, favoris, historique, guide, liste du lecteur et téléchargements sont contrôlés ; les épisodes héritent de la catégorie de leur série. Le PIN n’est jamais conservé en clair : le profil contient une empreinte scrypt salée dans `parental.json`, avec des permissions privées. Cette protection concerne la navigation dans TunPlayer : elle ne chiffre pas les fichiers téléchargés et ne remplace pas des comptes système séparés pour les personnes ayant accès au profil.
 
 Pour les M3U, les URL de séries sont reconnues avant les extensions de vidéo. Les URL `.mp4`, `.mkv`, `.avi` ou `.mov` et les chemins `/movie/` sont ensuite classés comme films. Les autres flux sont classés dans Télévision. Les protocoles HTTP(S), RTSP, RTMP, UDP et RTP sont admis ; leur lecture dépend de mpv et du réseau. Les directives M3U propres à Kodi, les en-têtes HTTP particuliers et le DRM ne sont pas implémentés.
 

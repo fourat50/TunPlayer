@@ -133,6 +133,7 @@ class RadioMixin:
         else:self.radio_tasks.submit(lambda cancel:self.radio_directory.search(request,cancel,refresh),done,failed)
 
     def radio_card(self,station):
+        if self.content_locked(station):return self.locked_media_card(station)
         from .app import box,label,button
         card=box(True,12,'radio-card');card.set_size_request(240,-1)
         identity=box(spacing=12);identity.pack_start(self.media_art(station,width=72,height=72),False,False,0)

@@ -12,6 +12,14 @@ class Event(C.Structure):
 class EndFile(C.Structure):
     _fields_ = [('reason', C.c_int), ('error', C.c_int)]
 
+class ClientMessage(C.Structure):
+    _fields_=[('num_args',C.c_int),('args',C.POINTER(C.c_char_p))]
+
+INPUT_BINDINGS={'MBTN_LEFT_DBL':'fullscreen-double','WHEEL_UP':'volume-up','WHEEL_DOWN':'volume-down',
+    'f':'fullscreen','F':'fullscreen','m':'mute','M':'mute','SPACE':'pause','UP':'volume-up','DOWN':'volume-down',
+    'LEFT':'seek-back','RIGHT':'seek-forward','ESC':'escape','PGUP':'previous','PGDWN':'next',
+    'b':'browser','B':'browser','a':'aspect','A':'aspect','Ctrl+k':'search','Ctrl+q':'quit'}
+
 class Player:
     def __init__(self, window_id=None, headless=False):
         if not headless and (isinstance(window_id,bool) or not isinstance(window_id,int) or window_id<=0):
@@ -40,7 +48,7 @@ class Player:
             raise RuntimeError('Impossible de créer le lecteur mpv.')
         options = {'hwdec':'auto-safe', 'keep-open':'yes', 'idle':'yes', 'terminal':'no',
                    'input-default-bindings':'no', 'osc':'no', 'cache':'yes', 'demuxer-max-bytes':'134217728',
-                   'network-timeout':'20', 'volume':'75','cursor-autohide':'no'}
+                   'network-timeout':'20', 'volume':'75','cursor-autohide':'no','input-cursor':'yes'}
         if headless:options.update({'vo':'null','ao':'null'})
         else:
             options['wid']=str(window_id)
@@ -52,6 +60,7 @@ class Player:
             for key,value in options.items():
                 self.check(self.lib.mpv_set_option_string(self.handle,key.encode(),value.encode()))
             self.check(self.lib.mpv_initialize(self.handle))
+            for key,action in INPUT_BINDINGS.items():self.command('keybind',key,'script-message tunplayer-input '+action)
         except Exception:
             self.close(); raise
 
@@ -83,6 +92,10 @@ class Player:
                     result.append(('error', self.lib.mpv_error_string(end.error).decode()))
                 elif end.reason==0:result.append(('ended','eof'))
             if event.event_id == 8: result.append(('loaded',''))
+            if event.event_id==16 and event.data:
+                message=C.cast(event.data,C.POINTER(ClientMessage)).contents
+                if message.num_args==2 and message.args[0]==b'tunplayer-input':
+                    result.append(('input',message.args[1].decode('utf-8',errors='replace')))
         return result
 
     def tracks(self):
