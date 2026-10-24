@@ -223,7 +223,7 @@ class Library:
     def __init__(self, path, *, migrate=True, read_only=False):
         self.path = Path(path)
         if read_only or not migrate:
-            self.db=sqlite3.connect(f'file:{self.path}?mode=ro',uri=True,timeout=5) if read_only else sqlite3.connect(self.path,timeout=15)
+            self.db=sqlite3.connect(self.path.resolve().as_uri()+'?mode=ro',uri=True,timeout=5) if read_only else sqlite3.connect(self.path,timeout=15)
             self.db.row_factory=sqlite3.Row
             self.db.create_function('search_text',1,search_text,deterministic=True)
             self.db.execute('PRAGMA foreign_keys=ON')
