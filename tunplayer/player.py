@@ -3,11 +3,8 @@ import ctypes as C
 import ctypes.util
 import json
 import locale
-import os
-from pathlib import Path
 import sys
 from .playback_ui import ASPECT_MODES
-from .platform_support import mpv_library
 
 class Event(C.Structure):
     _fields_ = [('event_id', C.c_int), ('error', C.c_int), ('reply_userdata', C.c_uint64), ('data', C.c_void_p)]
@@ -20,16 +17,10 @@ class Player:
         if not headless and (isinstance(window_id,bool) or not isinstance(window_id,int) or window_id<=0):
             raise RuntimeError('La zone vidéo intégrée est indisponible. Relancez TunPlayer dans votre session graphique.')
         locale.setlocale(locale.LC_NUMERIC, 'C')
-        path=mpv_library()
+        path = ctypes.util.find_library('mpv') or ctypes.util.find_library('mpv-2')
         if not path:
             raise RuntimeError('libmpv introuvable. Installez libmpv2 (Linux) ou mpv-2.dll (Windows).')
-        self._dll_directory=None
-        if sys.platform=='win32' and hasattr(os,'add_dll_directory') and Path(path).is_file():
-            self._dll_directory=os.add_dll_directory(str(Path(path).parent))
-        try:self.lib=C.CDLL(path)
-        except OSError:
-            if self._dll_directory:self._dll_directory.close()
-            raise
+        self.lib = C.CDLL(path)
         signatures = {
             'mpv_create': (C.c_void_p, []),
             'mpv_initialize': (C.c_int, [C.c_void_p]),
@@ -57,8 +48,6 @@ class Player:
                 # Automatic selection can pick a Wayland VO which cannot embed an X11 wid.
                 # No trailing comma: never fall back to an unrelated windowing backend.
                 options.update({'vo':'gpu,x11','gpu-context':'x11egl','gpu-api':'opengl'})
-            elif sys.platform=='win32':
-                options.update({'vo':'gpu','gpu-context':'d3d11','d3d11-warp':'auto'})
         try:
             for key,value in options.items():
                 self.check(self.lib.mpv_set_option_string(self.handle,key.encode(),value.encode()))
@@ -110,4 +99,3 @@ class Player:
         if self.handle:
             self.lib.mpv_terminate_destroy(self.handle)
             self.handle = None
-        if self._dll_directory:self._dll_directory.close();self._dll_directory=None

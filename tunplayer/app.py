@@ -27,7 +27,6 @@ from .playback_ui import ASPECT_MODES, PlaybackIdle,browser_layout,offers_resume
 from .playback_flow import ReconnectPolicy, NextEpisodeCountdown, remote_stream
 from .navigation import NavigationMemory
 from .player_catalog import PlayerCatalog
-from .platform_support import data_directory,cache_directory,bundled_binary,win32_window_id
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -78,7 +77,7 @@ class App(Gtk.Application):
     def __init__(self, args):
         super().__init__(application_id='tn.tunplayer.desktop', flags=Gio.ApplicationFlags.NON_UNIQUE if args.data_dir else Gio.ApplicationFlags.FLAGS_NONE)
         self.args = args
-        data=Path(args.data_dir) if args.data_dir else data_directory()
+        data = Path(args.data_dir) if args.data_dir else Path(os.environ.get('XDG_DATA_HOME',Path.home()/'.local/share'))/'tunplayer'
         self.library = Library(data/'library.sqlite3')
         self.view = 'home'; self.group = None; self.query = ''; self.current = None
         self.source_id = None; self.page = 0; self.closing = False
@@ -807,7 +806,7 @@ class App(Gtk.Application):
         url=channel.get('logo') or ''
         if url.startswith(('https://','http://')):
             if self.artwork is None:
-                directory=self.library.path.parent/'artwork-cache' if self.args.data_dir else cache_directory()/'artwork'
+                directory=self.library.path.parent/'artwork-cache' if self.args.data_dir else Path(os.environ.get('XDG_CACHE_HOME',Path.home()/'.cache'))/'tunplayer'/'artwork'
                 self.artwork=ArtworkLoader(directory)
             generation=self.render_generation
             def ready(pixbuf):
@@ -1550,7 +1549,6 @@ class App(Gtk.Application):
                 if not isinstance(window,GdkX11.X11Window):
                     raise RuntimeError('La lecture intégrée nécessite X11 ou XWayland. Relancez TunPlayer avec son lanceur.')
                 window_id=window.get_xid()
-            elif sys.platform=='win32':window_id=win32_window_id(window)
             else:
                 raise RuntimeError('L’intégration vidéo native de ce système n’est pas encore disponible.')
             player=Player(window_id=window_id)
@@ -1914,16 +1912,14 @@ class App(Gtk.Application):
             self.stop_record(); return
         if not self.current or not self.player:return
         self.cancel_next()
-        ffmpeg=bundled_binary('ffmpeg')
-        if not ffmpeg:self.notify('FFmpeg doit être installé pour enregistrer.',True); return
+        if not shutil.which('ffmpeg'):self.notify('FFmpeg doit être installé pour enregistrer.',True); return
         path=self.choose_file('Enregistrer le flux dans un fichier .mkv',save=True)
         if not path:return
         if not path.lower().endswith('.mkv'):path+='.mkv'
         # -n protects an existing file, including after automatic extension addition.
         try:
             self.record_path=path
-            self.recording=subprocess.Popen([ffmpeg,'-hide_banner','-loglevel','error','-n','-i',self.current['url'],'-map','0','-c','copy',path],stdin=subprocess.PIPE,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,
-                creationflags=subprocess.CREATE_NO_WINDOW if sys.platform=='win32' else 0)
+            self.recording=subprocess.Popen(['ffmpeg','-hide_banner','-loglevel','error','-n','-i',self.current['url'],'-map','0','-c','copy',path],stdin=subprocess.PIPE,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
             self.update_record_visual(True); self.notify('Enregistrement démarré. Restez sur ce contenu.')
         except OSError:self.notify('Impossible de démarrer FFmpeg.',True)
 
