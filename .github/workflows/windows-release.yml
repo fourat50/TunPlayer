@@ -39,6 +39,7 @@ jobs:
           update: true
           install: >-
             ca-certificates
+            git
             mingw-w64-ucrt-x86_64-gcc
             mingw-w64-ucrt-x86_64-python
             mingw-w64-ucrt-x86_64-python-gobject

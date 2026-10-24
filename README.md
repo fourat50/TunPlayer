@@ -253,7 +253,7 @@ Pour construire manuellement, utilisez le terminal **MSYS2 UCRT64** sous Windows
 
 ```bash
 pacman -Syu
-pacman -S --needed ca-certificates mingw-w64-ucrt-x86_64-{gcc,python,python-gobject,python-cairo,gtk3,librsvg,adwaita-icon-theme,mpv,nsis}
+pacman -S --needed ca-certificates git mingw-w64-ucrt-x86_64-{gcc,python,python-gobject,python-cairo,gtk3,librsvg,adwaita-icon-theme,mpv,nsis}
 python scripts/build_windows.py
 python scripts/verify_windows.py dist/TunPlayer-1.0.0-windows-x64-setup.exe
 ```
