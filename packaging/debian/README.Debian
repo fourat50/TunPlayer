@@ -1,0 +1,19 @@
+TunPlayer pour Debian / Ubuntu / Linux Mint
+=========================================
+
+Installation depuis le dossier du fichier .deb :
+  sudo apt install ./tunplayer_1.0.0_all.deb
+
+Lancement : menu des applications, ou commande tunplayer.
+Les fichiers du programme sont installes dans /usr/share/tunplayer.
+Les sources, favoris et positions restent dans le profil de l'utilisateur :
+  ~/.local/share/tunplayer
+Le cache reste dans ~/.cache/tunplayer. Aucune source IPTV n'est fournie.
+
+Suppression du programme :
+  sudo apt remove tunplayer
+Les donnees de l'utilisateur sont conservees.
+
+La lecture integree utilise X11, ou XWayland dans une session Wayland.
+Ce paquet contient du Python et des ressources independantes du processeur.
+Les bibliotheques GTK, mpv et FFmpeg sont installees par APT.

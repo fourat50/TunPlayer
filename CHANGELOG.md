@@ -2,6 +2,8 @@
 
 ## 1.0.0
 
+- Distribution Linux : paquet `.deb` construit depuis le tag fige, lanceur et icone standards, dependances APT et SHA256.
+- Outils de construction reproductible, verification isolee et publication de release avec controle des telechargements. Le tag applicatif 1.0.0 reste inchange.
 - Première version 1.0.0 de TunPlayer pour Linux : sources M3U / Xtream, direct, films, séries, guide XMLTV, favoris, historique et reprise.
 - Lecteur mpv intégré avec formats d’image, audio / sous-titres, enregistrement manuel et reconnexion automatique.
 - Navigation par catégories dans le lecteur, épisodes et saisons, commandes Précédent / Suivant nommées, choix de reprise et raccourcis clavier.

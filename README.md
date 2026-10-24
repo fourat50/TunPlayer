@@ -24,6 +24,46 @@ sudo apt install python3 python3-gi python3-gi-cairo gir1.2-gtk-3.0 libmpv2 ffmp
 
 L’application impose X11 pour GTK et utilise X11 / EGL pour la vidéo mpv, avec repli logiciel X11 si nécessaire. Sous Wayland, XWayland doit être disponible. La sortie mpv est limitée à `gpu,x11`, sans retour à la sélection automatique d’un autre environnement graphique. L’identifiant de la zone vidéo GTK est obligatoire : si cette zone est indisponible, une erreur est affichée et aucun lecteur autonome n’est lancé. `start.sh` emploie le Python système, qui dispose des modules GTK installés par la distribution.
 
+## Paquet Linux .deb
+
+Les paquets publies se trouvent dans les [releases GitHub](https://github.com/fourat50/TunPlayer/releases). Pour installer un fichier telecharge, depuis son dossier :
+
+```bash
+sudo apt install ./tunplayer_1.0.0_all.deb
+```
+
+Lancez ensuite **TunPlayer** depuis le menu des applications, ou avec `tunplayer`. APT installe les bibliotheques declarees dans le paquet. Celui-ci contient le programme Python et les ressources, sans profil utilisateur ni playlist. Il vise Debian, Ubuntu et Linux Mint disposant de Python >= 3.10 et des dependances indiquees. La verification locale a ete faite sur Linux Mint 22.3, base Ubuntu 24.04 ; aucune validation sur les autres distributions n'est revendiquee.
+
+Pour supprimer le programme tout en gardant votre profil :
+
+```bash
+sudo apt remove tunplayer
+```
+
+### Construire et verifier le paquet
+
+Les outils d'empaquetage sont sur `main`. Le programme embarque est lu dans le tag fige `v1.0.0` : le tag n'est pas deplace et le contenu de l'application reste identique a cette version.
+
+```bash
+sudo apt install dpkg fakeroot desktop-file-utils
+python3 scripts/build_deb.py --ref v1.0.0
+python3 scripts/verify_deb.py dist/tunplayer_1.0.0_all.deb --install-test
+```
+
+La construction ne demande pas les droits root. Elle produit le `.deb` et `dist/SHA256SUMS`, avec dates de source fixes et proprietaires root dans l'archive. Deux constructions identiques ont ete comparees octet par octet. Le test d'installation utilise une base dpkg et une racine temporaires : il ne modifie pas votre installation systeme. Une simulation APT distincte verifie la resolution des dependances sur la machine courante.
+
+Le paquet installe `/usr/bin/tunplayer`, `/usr/share/tunplayer`, une entree dans le menu et une icone standard. Le lanceur utilise le Python systeme ; aucune dependance pip et aucun script de maintenance privilegie ne sont ajoutes. Le demarrage `--help`, les chemins, les permissions, les MD5 et le fichier desktop sont verifies. Le rendu graphique complet reste a tester dans une session de bureau.
+
+### Publier la release
+
+Depuis un terminal ou GitHub CLI est installe et authentifie :
+
+```bash
+python3 scripts/publish_release.py --tag v1.0.0 --push-source
+```
+
+Cette commande pousse les outils de construction sur `main`, construit et verifie le paquet depuis le tag existant, prepare une release brouillon, joint le `.deb` et `SHA256SUMS`, puis telecharge ces deux fichiers pour les comparer aux originaux avant de publier la release. Un tag different ou un fichier distant incompatible arrete la publication ; aucun fichier existant n'est ecrase automatiquement. Les notes sont dans `packaging/releases/v1.0.0.md`.
+
 ## Interface
 
 L’interface adopte une palette graphite, ivoire et citron vert. L’accueil **Découvrir** présente uniquement trois rangées d’affiches : derniers films ajoutés, dernières séries ajoutées et Tendances. Il ne comporte ni colonne de catégories ni panneau de filtres. Les rangées défilent horizontalement ; **Tout voir** ouvre la rubrique correspondante avec le tri des ajouts récents. La recherche de l’en-tête filtre aussi ces sélections.
@@ -156,7 +196,7 @@ python3 -m unittest discover -s tests -v
 python3 -m compileall -q tunplayer run.py scripts tests
 ```
 
-**Résultat dans l’environnement de développement : 153 tests réussis.** Ils couvrent les formats, les transactions, la migration de la base 0.1, les rotations d’URL, les identifiants ambigus, la pagination sans doublons, la recherche sans accents et la conservation des données après un échec. Les tests du contrôleur utilisent la vraie boucle GLib et des connexions SQLite distinctes pour vérifier l’import et l’actualisation asynchrones. La lecture, la reprise, l’arrêt et la protection de la position après un échec sont vérifiés avec le **vrai moteur libmpv** et le média local. Les nouveaux tests couvrent aussi les filtres combinés, les métadonnées, les séries, la persistance des épisodes et de leur reprise, le décodage réel des images, le cache et les changements de page pendant les téléchargements. Les régressions ajoutent la récupération des séries pour une ancienne source sans toucher aux films, les variantes de réponse fournisseur, les écritures pendant un verrou SQLite, la réactivité de GLib pendant une requête et le rejet des réponses de recherche dépassées. Les tests ajoutés vérifient les trois sélections de Découvrir, les tris, le repli sur la date d’import, les limites du délai de cinq secondes et les formats d’image sur le vrai moteur mpv. Les tests de la version 0.4 vérifient aussi les tentatives de reconnexion et leur annulation, la reprise après interruption, les fiches et leur cache après échec, le passage entre saisons, le marquage des contenus terminés et un enchaînement réel de deux fichiers locaux via mpv. La version 0.4.1 ajoute la vérification du cache borné et expirant, de sa séparation par révision, de la réutilisation des comptages, des pages préparées sans accès SQLite, de la mémoire de navigation, de la priorité du défilement manuel et des mises à jour ciblées des favoris. La version 0.4.2 vérifie les destinations du retour, l’arrêt réel de mpv après lecture d’un épisode, la conservation de la position finale du film, l’annulation des actions en attente et la persistance de la largeur des catégories. La version 0.4.5 vérifie aussi le refus d’un identifiant parent absent ou invalide, l’absence de création de lecteur quand la surface GTK manque, et les options X11 sur le vrai moteur mpv, même avec un environnement déclaré Wayland. La version 0.5 vérifie les catégories dans le lecteur, la pagination bornée et centrée sur le média en cours, les cibles Précédent / Suivant isolées par source et catégorie, le passage entre saisons, les résultats dépassés annulés et l’ouverture d’une série sans interruption du flux. Le passage manuel entre épisodes réutilise le vrai moteur mpv dans les tests. La version 0.6 vérifie le repli adaptatif et la mémorisation de largeur, les limites de taille natives, les choix de reprise / redémarrage / annulation, l’absence de dialogue pendant un réessai ou l’enchaînement, les états simplifiés, le diagnostic à la demande et les priorités clavier. Les services Xtream et les réponses HTTP d’images restent simulés dans les tests ; le décodage des images et la lecture vidéo utilisent leurs vrais moteurs. La feuille de style GTK est aussi chargée sans erreur de parsing.
+**Résultat dans l’environnement de développement : 158 tests réussis.** Ils couvrent les formats, les transactions, la migration de la base 0.1, les rotations d’URL, les identifiants ambigus, la pagination sans doublons, la recherche sans accents et la conservation des données après un échec. Les tests du contrôleur utilisent la vraie boucle GLib et des connexions SQLite distinctes pour vérifier l’import et l’actualisation asynchrones. La lecture, la reprise, l’arrêt et la protection de la position après un échec sont vérifiés avec le **vrai moteur libmpv** et le média local. Les nouveaux tests couvrent aussi les filtres combinés, les métadonnées, les séries, la persistance des épisodes et de leur reprise, le décodage réel des images, le cache et les changements de page pendant les téléchargements. Les régressions ajoutent la récupération des séries pour une ancienne source sans toucher aux films, les variantes de réponse fournisseur, les écritures pendant un verrou SQLite, la réactivité de GLib pendant une requête et le rejet des réponses de recherche dépassées. Les tests ajoutés vérifient les trois sélections de Découvrir, les tris, le repli sur la date d’import, les limites du délai de cinq secondes et les formats d’image sur le vrai moteur mpv. Les tests de la version 0.4 vérifient aussi les tentatives de reconnexion et leur annulation, la reprise après interruption, les fiches et leur cache après échec, le passage entre saisons, le marquage des contenus terminés et un enchaînement réel de deux fichiers locaux via mpv. La version 0.4.1 ajoute la vérification du cache borné et expirant, de sa séparation par révision, de la réutilisation des comptages, des pages préparées sans accès SQLite, de la mémoire de navigation, de la priorité du défilement manuel et des mises à jour ciblées des favoris. La version 0.4.2 vérifie les destinations du retour, l’arrêt réel de mpv après lecture d’un épisode, la conservation de la position finale du film, l’annulation des actions en attente et la persistance de la largeur des catégories. La version 0.4.5 vérifie aussi le refus d’un identifiant parent absent ou invalide, l’absence de création de lecteur quand la surface GTK manque, et les options X11 sur le vrai moteur mpv, même avec un environnement déclaré Wayland. La version 0.5 vérifie les catégories dans le lecteur, la pagination bornée et centrée sur le média en cours, les cibles Précédent / Suivant isolées par source et catégorie, le passage entre saisons, les résultats dépassés annulés et l’ouverture d’une série sans interruption du flux. Le passage manuel entre épisodes réutilise le vrai moteur mpv dans les tests. La version 0.6 vérifie le repli adaptatif et la mémorisation de largeur, les limites de taille natives, les choix de reprise / redémarrage / annulation, l’absence de dialogue pendant un réessai ou l’enchaînement, les états simplifiés, le diagnostic à la demande et les priorités clavier. Cinq tests supplémentaires couvrent le paquet Debian reproductible, son installation / suppression isolées et les garde-fous de publication (tag, téléchargement et brouillon). Les interactions GitHub de ces tests de publication sont simulées ; elles ne prouvent pas une mise en ligne réelle. Les services Xtream et les réponses HTTP d’images restent simulés dans les tests ; le décodage des images et la lecture vidéo utilisent leurs vrais moteurs. La feuille de style GTK est aussi chargée sans erreur de parsing.
 
 Mesure locale sur un catalogue synthétique de **20 000 entrées** : import 0,75 s, lecture de la dernière page SQLite de 60 lignes 4,2 ms, comptage d’une recherche 5,7 ms, actualisation des 20 000 URL avec conservation des identités 1,10 s. Ce sont des mesures du stockage sur cette machine, sans réseau ni rendu graphique. Pour reproduire :
 
@@ -193,6 +233,9 @@ Il utilise un profil temporaire avec 125 chaînes, six films, une série et deux
 - `assets/demo.mp4` : extrait de test local créé avec FFmpeg ; aucune ressource UHF n’est copiée.
 - `tests/` : tests métier, contrôleur asynchrone et intégration libmpv.
 - `scripts/smoke_ui.py` : parcours graphique et captures.
+- `scripts/build_deb.py`, `scripts/verify_deb.py` : construction depuis un tag et verification du paquet installable.
+- `scripts/publish_release.py` : publication verifiee du paquet avec GitHub CLI.
+- `packaging/debian/`, `packaging/releases/` : metadonnees du paquet et notes de release.
 - `scripts/benchmark_library.py` : mesures reproductibles sur une bibliothèque temporaire.
 - `scripts/benchmark_responsiveness.py` : mesure de la boucle GLib pendant les requêtes d’un catalogue synthétique.
 
@@ -238,3 +281,5 @@ Les réglages du lecteur utilisent les composants natifs [Gtk.MenuButton](https:
 La configuration d’intégration suit les options `wid`, `vo`, `gpu-context` et `gpu-api` du [manuel officiel mpv](https://mpv.io/manual/stable/). Les options ont été vérifiées sur le mpv 0.37 installé ; la hiérarchie réelle des fenêtres doit être vérifiée par le parcours graphique dans la session Linux.
 
 La console masquée ne réserve aucun espace sous la vidéo. Les messages de reconnexion et d’épisode suivant partagent un emplacement [Gtk.Stack à taille homogène](https://docs.gtk.org/gtk3/class.Stack.html) dans la console visible. Le panneau utilise [Gtk.Paned](https://docs.gtk.org/gtk3/class.Paned.html) et respecte ses limites natives. La session graphique étant inaccessible au bac à sable, les assertions de dimensions et les captures du parcours graphique restent à exécuter depuis le bureau Linux.
+
+L’empaquetage utilise [dpkg-deb](https://manpages.debian.org/bookworm/dpkg/dpkg-deb.1.en.html). La publication suit les commandes officielles [gh release create](https://cli.github.com/manual/gh_release_create) et [gh release upload](https://cli.github.com/manual/gh_release_upload).

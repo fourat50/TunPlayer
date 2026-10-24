@@ -1,0 +1,9 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: TunPlayer
+Source: https://github.com/fourat50/TunPlayer
+
+Files: *
+Copyright: 2026 fourat50
+License: not-specified
+ No source-code redistribution license has been specified in the upstream
+ repository. This file records the current upstream licensing information.

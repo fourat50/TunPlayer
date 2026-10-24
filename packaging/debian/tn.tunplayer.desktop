@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=TunPlayer
+Comment=Votre television, vos films et vos series
+Exec=tunplayer
+TryExec=tunplayer
+Icon=tunplayer
+Terminal=false
+Categories=AudioVideo;Video;Player;
+Keywords=IPTV;M3U;Xtream;Films;Series;
+StartupNotify=true
