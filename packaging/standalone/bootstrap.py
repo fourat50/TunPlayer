@@ -51,6 +51,16 @@ def check():
     assert ssl.create_default_context().cert_store_stats()['x509_ca']>0
     pix=GdkPixbuf.Pixbuf.new_from_file(str(ROOT/'app/assets/tunplayer.svg'))
     assert pix.get_width()>0
+    subtitle_sources=[]
+    if (ROOT/'app/tunplayer/subtitles.py').exists():
+        from tunplayer.subtitles import SubtitleService,subtitle_text
+        from tunplayer.subtitle_languages import LANGUAGES
+        assert len(LANGUAGES)>=184
+        assert subtitle_text(b'1\n00:00:00,000 --> 00:00:01,000\nTest\n','test.srt')[1]=='.srt'
+        subtitle_sources=list(SubtitleService().providers())
+        assert {'podnapisi','opensubtitles'}.issubset(subtitle_sources)
+        if 'subliminal' in json.loads((ROOT/'build-info.json').read_text()).get('python_extras',{}):
+            assert 'subliminal' in subtitle_sources,'Extension Subliminal incomplete'
     subprocess.run([str(RUNTIME/'bin/ffmpeg'),'-version'],check=True,stdout=subprocess.DEVNULL)
     subprocess.run([str(RUNTIME/'bin/ffmpeg'),'-v','error','-i',str(ROOT/'app/assets/demo.mp4'),
         '-frames:v','1','-f','null','-'],check=True,stdout=subprocess.DEVNULL,timeout=20)
@@ -74,7 +84,7 @@ def check():
             assert any(component in p for p in private),component+' non charge depuis le runtime'
         print(json.dumps(dict(ok=True,python=sys.executable,prefix=sys.prefix,gtk=Gtk.get_major_version(),
             mpv=player.get('mpv-version'),width=player.get('width'),private_libraries=len(private),
-            host_driver_libraries=sorted(drivers)),ensure_ascii=False))
+            host_driver_libraries=sorted(drivers),subtitle_sources=subtitle_sources),ensure_ascii=False))
     finally:player.close()
 
 

@@ -31,6 +31,7 @@ from .radio_ui import RadioMixin
 from .download_ui import DownloadMixin
 from .access_ui import AccessMixin
 from .interactions import InteractionMixin
+from .subtitle_ui import SubtitleMixin
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -77,7 +78,7 @@ def navigation(text, symbol, callback):
     w.get_accessible().set_name(text)
     return w
 
-class App(AccessMixin,InteractionMixin,DownloadMixin,RadioMixin,Gtk.Application):
+class App(SubtitleMixin,AccessMixin,InteractionMixin,DownloadMixin,RadioMixin,Gtk.Application):
     def __init__(self, args):
         super().__init__(application_id='tn.tunplayer.desktop', flags=Gio.ApplicationFlags.NON_UNIQUE if args.data_dir else Gio.ApplicationFlags.FLAGS_NONE)
         self.args = args
@@ -133,7 +134,7 @@ class App(AccessMixin,InteractionMixin,DownloadMixin,RadioMixin,Gtk.Application)
         self.media_loaded = False; self.resume_target = None; self.resume_deadline = 0
         self.init_radio()
         self.init_downloads()
-        self.init_access();self.init_interactions()
+        self.init_access();self.init_interactions();self.init_subtitles()
         self.connect('activate',self.activate)
 
     def write_error(self,_):
@@ -1370,6 +1371,7 @@ class App(AccessMixin,InteractionMixin,DownloadMixin,RadioMixin,Gtk.Application)
     def render_settings(self):
         self.content.pack_start(label('Faites comme chez vous.','section-title'),False,False,0)
         self.content.pack_start(self.security_settings(),False,False,0)
+        self.content.pack_start(self.subtitle_settings_panel(),False,False,0)
         automation=box(True,12,'panel')
         automation.pack_start(label('Une lecture qui continue','section-title'),False,False,0)
         for title,active,callback,copy in [
@@ -1838,6 +1840,7 @@ class App(AccessMixin,InteractionMixin,DownloadMixin,RadioMixin,Gtk.Application)
             if choice=='start':channel['position']=0
         self.cancel_next();self.reconnect.reset()
         self.current=channel;self.position=0.;self.duration=0.;self.user_paused=False
+        self.active_subtitle=None
         self.last_playback_error='';self.diagnostic_updated=0
         self.configure_player_browser(channel)
         self.update_player_identity(channel);self.update_pause_visual(False)
@@ -2040,15 +2043,29 @@ class App(AccessMixin,InteractionMixin,DownloadMixin,RadioMixin,Gtk.Application)
                 if t.get('selected'):active=identity
             combo.set_active_id(active)
             combo.connect('changed',lambda w,p=prop:self.set_track(p,w.get_active_id())); area.pack_start(combo,False,False,0)
-        area.pack_start(button('Charger des sous-titres…',self.add_subtitles),False,False,0); d.show_all(); d.run(); d.destroy()
+        area.pack_start(button('Charger des sous-titres…',self.add_subtitles),False,False,0)
+        timing=box(spacing=12);timing.pack_start(label('Décalage des sous-titres (secondes)','muted'),False,False,0)
+        delay=Gtk.SpinButton.new_with_range(-120,120,.5);delay.set_digits(1)
+        try:delay.set_value(float(self.player.get('sub-delay','0')))
+        except ValueError:delay.set_value(0)
+        delay.set_tooltip_text('Valeur positive : texte plus tard. Valeur négative : texte plus tôt.')
+        delay.connect('value-changed',lambda w:self.subtitle_delay(w.get_value()))
+        timing.pack_start(delay,False,False,0);timing.pack_start(button('Réinitialiser',lambda:delay.set_value(0),'small'),False,False,0)
+        area.pack_start(timing,False,False,0)
+        if self.subtitle_context():d.add_button('Rechercher en ligne',101)
+        d.show_all();response=d.run();d.destroy()
+        if response==101:self.search_subtitles()
 
     def set_track(self, prop, value):
+        if not self.player:return
         try:self.player.set(prop,value)
         except RuntimeError as exc:self.notify(str(exc),True)
+        else:
+            if prop=='sid' and value=='no':self.disable_subtitles()
 
     def add_subtitles(self):
         path=self.choose_file('Choisir un fichier de sous-titres')
-        if path:self.command('sub-add',path,'select')
+        if path:self.disable_subtitles();self.command('sub-add',path,'select')
 
     def toggle_fullscreen(self):
         self.player_activity()
@@ -2111,6 +2128,7 @@ class App(AccessMixin,InteractionMixin,DownloadMixin,RadioMixin,Gtk.Application)
                 if not any(item[0]=='loaded' for item in events[index+1:]):self.handle_playback_failure(message)
             elif kind=='loaded' and self.accepting_load and self.current:
                 self.media_loaded=True;self.load_deadline=None;self.reconnect.loaded()
+                self.restore_subtitles()
                 if not self.current.get('demo') and not self.current.get('radio'):self.mark_watched(self.current['id'])
                 if self.current['kind']!='live' and self.current.get('position',0)>0:
                     self.resume_target=self.current['position'];self.resume_deadline=time.monotonic()+5
@@ -2203,6 +2221,7 @@ class App(AccessMixin,InteractionMixin,DownloadMixin,RadioMixin,Gtk.Application)
     def close(self, *_):
         if self.closing: return False
         self.closing=True
+        self.close_subtitle_dialogs()
         if hasattr(self,'window'):self.window.hide()
         self.cancel_stream_start()
         if self.download_timer:GLib.source_remove(self.download_timer);self.download_timer=None

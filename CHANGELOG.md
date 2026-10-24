@@ -1,5 +1,15 @@
 # Historique
 
+## 1.4.0
+
+- Recherche de sous-titres depuis le lecteur, avec titre modifiable, année, saison, épisode et langue préférée mémorisée ; 189 langues et variantes proposées, avec saisie de code ISO.
+- Sources OpenSubtitles.com et Podnapisi intégrées sans dépendance Python supplémentaire ; recherches en parallèle hors du thread GTK et erreurs de source indépendantes.
+- Configuration de la clé API OpenSubtitles et connexion facultative au compte ; mot de passe non enregistré, jeton et paramètres privés.
+- Résultats triés selon une correspondance estimée, indication des versions, sous-titres malentendants et traductions automatiques.
+- Téléchargement, validation des fichiers / archives, activation sans relancer la vidéo, sélection locale et décalage mémorisés par contenu.
+- Protection contre l’application d’un résultat ancien après un changement de lecture ou un verrouillage par PIN.
+- Adaptateur facultatif Subliminal 2.8 pour des sources supplémentaires ; option de construction pour embarquer ses dépendances lorsqu’elles sont disponibles.
+
 ## 1.3.1
 
 - Démarrage vidéo différé jusqu’à l’affichage du lecteur et à la stabilisation de sa taille ; une fenêtre masquée ou un retour au catalogue ne déclenchent plus le chargement dans une surface invisible.

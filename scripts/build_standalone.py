@@ -34,7 +34,19 @@ def dependencies(path):
     return [Path(p) for p in re.findall(r'=> (/.+?) \(0x[0-9a-fA-F]+\)',result.stdout)]
 
 
-def build(ref,destination):
+def bundle_python_extras(source,destination):
+    """Include an explicitly prepared optional dependency tree, with its metadata/licenses."""
+    if source is None:return {}
+    from importlib.metadata import distributions
+    source=Path(source).resolve()
+    inventory={dist.metadata['Name']:dist.version for dist in distributions(path=[str(source)])}
+    if inventory.get('subliminal')!='2.8.0':raise RuntimeError('Le dossier optionnel doit contenir Subliminal 2.8.0 et ses dépendances.')
+    if any((source/name).exists() for name in ('gi','cairo')):raise RuntimeError('Le dossier optionnel ne doit pas remplacer GTK ou Cairo.')
+    shutil.copytree(source,destination,dirs_exist_ok=True,ignore=shutil.ignore_patterns('__pycache__','*.pyc','bin'))
+    return inventory
+
+
+def build(ref,destination,subtitle_packages=None):
     if sys.platform!='linux' or platform.machine()!='x86_64':raise RuntimeError('Construction Linux x86_64 requise.')
     if sys.version_info[:2]!=(3,12):raise RuntimeError('Cette recette cible Python 3.12 et Ubuntu 24.04 / Mint 22.')
     from scripts.build_deb import read_version
@@ -56,6 +68,7 @@ def build(ref,destination):
     ignore=shutil.ignore_patterns('__pycache__','*.pyc','test','tests','idlelib','tkinter','ensurepip')
     shutil.copytree('/usr/lib/python3.12',runtime/'lib/python3.12',ignore=ignore)
     for module in (gi,cairo):shutil.copytree(Path(module.__file__).parent,runtime/'python-packages'/module.__name__,ignore=ignore)
+    extras=bundle_python_extras(subtitle_packages,runtime/'python-packages')
     for path in (runtime/'lib/python3.12').rglob('*.so'):roots.append(path)
     for path in (runtime/'python-packages').rglob('*.so'):roots.append(path)
     for path in Path('/usr/lib/x86_64-linux-gnu/gdk-pixbuf-2.0/2.10.0/loaders').glob('*.so'):
@@ -106,9 +119,12 @@ def build(ref,destination):
         if not copyright.exists():raise RuntimeError('Notice de licence absente : '+package)
         copy(copyright,bundle/'licenses'/package.replace(':','_')/'copyright')
     shutil.copytree('/usr/share/common-licenses',bundle/'licenses/common-licenses')
+    for name in names:
+        if name.startswith('packaging/licenses/'):
+            target=bundle/'licenses/app'/Path(name).name;target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(blob(name))
     info=dict(version=version,source_commit=commit,architecture='amd64',build_os=Path('/etc/os-release').read_text(),
         required_glibc=platform.libc_ver()[1],packages=inventory,native_files=provenance,
-        source_packages='https://archive.ubuntu.com/ubuntu/pool/',validation='scripts/verify_standalone.py')
+        source_packages='https://archive.ubuntu.com/ubuntu/pool/',validation='scripts/verify_standalone.py',python_extras=extras)
     (bundle/'build-info.json').write_text(json.dumps(info,ensure_ascii=False,indent=2))
     with tempfile.TemporaryDirectory(prefix='tunplayer-prepackage-') as cache:
         subprocess.run([str(bundle/'AppRun'),'--self-test'],check=True,env=dict(os.environ,XDG_CACHE_HOME=cache),timeout=45)
@@ -137,6 +153,7 @@ if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--ref',default='v1.0.0')
     parser.add_argument('--output-dir',type=Path,default=ROOT/'dist/standalone')
+    parser.add_argument('--subtitle-packages',type=Path,help='Dossier pip --target facultatif contenant Subliminal 2.8.0 et ses dépendances')
     args=parser.parse_args()
     sys.path.insert(0,str(ROOT))
-    build(args.ref,args.output_dir)
+    build(args.ref,args.output_dir,args.subtitle_packages)

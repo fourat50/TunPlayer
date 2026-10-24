@@ -52,6 +52,8 @@ def build(ref,output):
         put(root,'usr/share/applications/tn.tunplayer.desktop',(RECIPE/'tn.tunplayer.desktop').read_bytes())
         put(root,'usr/share/icons/hicolor/scalable/apps/tunplayer.svg',git('show',commit+':assets/tunplayer.svg'))
         for name in ('copyright','README.Debian'):put(root,'usr/share/doc/tunplayer/'+name,(RECIPE/name).read_bytes())
+        for name in names:
+            if name.startswith('packaging/licenses/'):put(root,'usr/share/doc/tunplayer/licenses/'+Path(name).name,git('show',commit+':'+name))
         for name in ('README.md','CHANGELOG.md'):
             put(root,'usr/share/doc/tunplayer/'+name+'.gz',gzip.compress(git('show',commit+':'+name),mtime=epoch))
         recipe_files=[Path(__file__).resolve(),*sorted(RECIPE.iterdir())]

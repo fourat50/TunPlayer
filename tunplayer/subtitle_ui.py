@@ -1,0 +1,202 @@
+"""GTK subtitle search, provider configuration, local reuse and timing controls."""
+from pathlib import Path
+import gi
+gi.require_version('Gtk','3.0')
+from gi.repository import Gtk
+from .jobs import LatestTask
+from .subtitles import (SubtitleError,SubtitleService,SubtitleStore,OpenSubtitles,SubtitleHTTP,
+                        PROVIDERS,media_query,validate_query,private_json,read_json)
+from .subtitle_languages import LANGUAGES
+
+
+class SubtitleMixin:
+    def init_subtitles(self):
+        self.subtitle_store=SubtitleStore(self.library.path.parent/'subtitles')
+        self.subtitle_settings_path=self.library.path.parent/'subtitle-providers.json'
+        self.subtitle_dialogs={};self.active_subtitle=None
+
+    def subtitle_context(self):
+        if not self.current or self.current.get('radio') or self.current['kind'] not in ('movie','episode','series'):return None
+        if self.content_locked(self.current):return None
+        return self.current['id'],self.stream_generation
+
+    def activate_subtitle(self,context,path,delay=0):
+        if self.closing or context!=self.subtitle_context() or not self.player:return False
+        try:
+            tracks=self.player.tracks() if hasattr(self.player,'tracks') else []
+            loaded=next((track for track in tracks if track.get('type')=='sub' and track.get('external-filename')==str(path)),None)
+            if loaded:self.player.set('sid',loaded['id'])
+            else:self.player.command('sub-add',str(path),'select')
+            self.player.set('sub-delay',delay);self.player.set('sub-visibility','yes')
+            self.active_subtitle=Path(path)
+            self.subtitle_store.select(self.current['id'],path,delay)
+            return True
+        except (RuntimeError,OSError,ValueError):self.notify('Le sous-titre n’a pas pu être activé ou mémorisé.',True);return False
+
+    def restore_subtitles(self):
+        self.active_subtitle=None
+        try:self.player.set('sub-delay',0)
+        except RuntimeError:pass
+        context=self.subtitle_context()
+        if context:
+            selected=self.subtitle_store.selected(context[0])
+            if selected:self.activate_subtitle(context,*selected)
+
+    def subtitle_delay(self,value):
+        if not self.player:return
+        try:
+            self.player.set('sub-delay',value)
+            if self.current and self.active_subtitle:self.subtitle_store.select(self.current['id'],self.active_subtitle,value)
+        except (RuntimeError,OSError,ValueError):self.notify('Impossible de modifier le décalage.',True)
+        self.player_activity()
+
+    def disable_subtitles(self):
+        if self.current:
+            index=read_json(self.subtitle_store.root/'selected.json');index.pop(str(self.current['id']),None)
+            try:private_json(self.subtitle_store.root/'selected.json',index)
+            except OSError:self.notify('Le choix de sous-titres n’a pas pu être mémorisé.',True)
+        self.active_subtitle=None
+
+    def subtitle_settings_panel(self):
+        from .app import box,label,button
+        panel=box(True,12,'panel');panel.pack_start(label('Sous-titres en ligne','section-title'),False,False,0)
+        panel.pack_start(label('Recherchez et activez des sous-titres depuis « Audio et sous-titres » pendant un film ou un épisode. Podnapisi fonctionne sans compte ; OpenSubtitles.com nécessite votre clé API.','muted',True),False,False,0)
+        panel.pack_start(button('Configurer les sources',self.configure_subtitle_sources,'ghost',symbol='subtitles'),False,False,0)
+        return panel
+
+    def configure_subtitle_sources(self):
+        from .app import label,button
+        settings=read_json(self.subtitle_settings_path)
+        dialog=Gtk.Dialog(title='Sources de sous-titres',transient_for=self.window,modal=True)
+        dialog.add_buttons('Fermer',Gtk.ResponseType.CLOSE,'Enregistrer',Gtk.ResponseType.APPLY)
+        area=dialog.get_content_area();area.set_border_width(20);area.set_spacing(12)
+        area.pack_start(label('OpenSubtitles.com','section-title'),False,False,0)
+        area.pack_start(label('La clé API est requise. La connexion au compte est facultative et permet d’utiliser son quota. Le mot de passe n’est pas enregistré.','muted',True),False,False,0)
+        link=Gtk.LinkButton.new_with_label('https://www.opensubtitles.com/en/consumers','Créer une clé API OpenSubtitles.com')
+        area.pack_start(link,False,False,0)
+        entries={}
+        for key,caption,secret in [('api_key','Clé API',True),('username','Nom d’utilisateur (facultatif)',False),('password','Mot de passe (pour se connecter)',True)]:
+            entry=Gtk.Entry();entry.set_placeholder_text(caption);entry.set_visibility(not secret);entry.set_text(str(settings.get(key,'')))
+            entry.get_accessible().set_name(caption);entries[key]=entry;area.pack_start(entry,False,False,0)
+        status=label('Compte mémorisé : '+str(settings.get('username','')) if settings.get('token') else 'Connexion facultative.','muted',True)
+        area.pack_start(status,False,False,0);task=LatestTask();self.subtitle_dialogs[dialog]=task
+        def snapshot():
+            value={k:entries[k].get_text().strip() for k in ('api_key','username')}
+            if value['api_key']==settings.get('api_key') and value['username']==settings.get('username'):
+                for key in ('token','expires','base_url'):
+                    if key in settings:value[key]=settings[key]
+            return value
+        def save(value):
+            try:private_json(self.subtitle_settings_path,value)
+            except OSError:status.set_text('Impossible d’enregistrer la configuration.');return False
+            settings.clear();settings.update(value);return True
+        def login():
+            value=snapshot();password=entries['password'].get_text()
+            if not value['api_key'] or not value['username'] or not password:status.set_text('Saisissez la clé API, le nom et le mot de passe.');return
+            connect.set_sensitive(False);status.set_text('Connexion…')
+            def done(value):
+                connect.set_sensitive(True);entries['password'].set_text('')
+                if save(value):status.set_text('Compte connecté. Le quota de ce compte sera utilisé.')
+            def failed(error):connect.set_sensitive(True);entries['password'].set_text('');status.set_text(str(error) if isinstance(error,SubtitleError) else 'Connexion impossible.')
+            task.submit(lambda cancel:OpenSubtitles(SubtitleHTTP(),value).login(value['username'],password),done,failed)
+        connect=button('Connecter le compte',login,'ghost');area.pack_start(connect,False,False,0)
+        def logout():
+            task.cancel();connect.set_sensitive(True)
+            value=snapshot()
+            for key in ('token','expires','base_url'):value.pop(key,None)
+            if save(value):status.set_text('Session locale déconnectée.');entries['password'].set_text('')
+        area.pack_start(button('Déconnecter le compte',logout,'small'),False,False,0)
+        from .subtitle_subliminal import SubliminalProvider
+        area.pack_start(label('Podnapisi : disponible sans compte.\nSubliminal : '+('installé, sources supplémentaires disponibles.' if SubliminalProvider.available() else 'extension facultative absente ; les deux sources intégrées restent disponibles.'),'muted',True),False,False,0)
+        dialog.set_default_size(570,450);dialog.show_all()
+        try:
+            while dialog.run()==Gtk.ResponseType.APPLY:
+                task.cancel();connect.set_sensitive(True)
+                if save(snapshot()):status.set_text('Configuration enregistrée. Les quotas et langues dépendent de chaque source.')
+        finally:
+            task.close();self.subtitle_dialogs.pop(dialog,None);entries['password'].set_text('');dialog.destroy()
+
+    def search_subtitles(self):
+        from .app import box,label,button
+        context=self.subtitle_context()
+        if context is None:self.notify('La recherche de sous-titres est disponible pendant un film ou un épisode.');return
+        channel=dict(self.current);parent=self.library.channel(channel['parent_id']) if channel.get('parent_id') else None
+        query=media_query(channel,parent);query['language']=self.library.setting('subtitle_language','fr')
+        dialog=Gtk.Dialog(title='Rechercher des sous-titres',transient_for=self.window,modal=True)
+        dialog.add_button('Fermer',Gtk.ResponseType.CLOSE);dialog.set_default_size(850,610)
+        area=dialog.get_content_area();area.set_border_width(18);area.set_spacing(12)
+        area.pack_start(label('Sous-titres pour ce contenu','section-title'),False,False,0)
+        title=Gtk.Entry();title.set_text(query['title']);title.set_placeholder_text('Titre du film ou de la série');title.get_accessible().set_name('Titre à rechercher')
+        area.pack_start(title,False,False,0);filters=box(spacing=12);numbers={}
+        for key,caption,maximum in [('year','Année',2100),('season','Saison',999),('episode','Épisode',9999)]:
+            column=box(True,5);column.pack_start(label(caption,'muted'),False,False,0)
+            field=Gtk.SpinButton.new_with_range(0,maximum,1);field.set_value(query[key]);field.get_accessible().set_name(caption)
+            field.set_sensitive(key=='year' or query['kind']=='episode');numbers[key]=field;column.pack_start(field,False,False,0);filters.pack_start(column,False,False,0)
+        languages=Gtk.ComboBoxText.new_with_entry()
+        for code,name in LANGUAGES:languages.append(code,name+' · '+code)
+        languages.set_active_id(query['language'])
+        if languages.get_active()<0:languages.get_child().set_text(query['language'])
+        languages.get_child().get_accessible().set_name('Langue des sous-titres ou code ISO')
+        language_box=box(True,5);language_box.pack_start(label('Langue · code ISO accepté','muted'),False,False,0)
+        language_box.pack_start(languages,False,False,0);filters.pack_start(language_box,True,True,0);area.pack_start(filters,False,False,0)
+        sources=box(spacing=12);checks={}
+        available=SubtitleService().providers()
+        for key,caption in PROVIDERS.items():
+            check=Gtk.CheckButton(label=caption);check.set_active(key=='podnapisi' or key=='opensubtitles' and bool(read_json(self.subtitle_settings_path).get('api_key')))
+            check.set_sensitive(key in available);checks[key]=check;sources.pack_start(check,False,False,0)
+        sources.pack_start(button('Configurer',self.configure_subtitle_sources,'small'),False,False,0);area.pack_start(sources,False,False,0)
+        status=label('Choisissez une langue puis lancez la recherche. La correspondance est estimée, pas une garantie de synchronisation.','muted',True)
+        area.pack_start(status,False,False,0);store=Gtk.ListStore(str,str,str,str,int)
+        tree=Gtk.TreeView(model=store);tree.set_headers_visible(True)
+        for index,caption in enumerate(('Langue','Source','Version / fichier','Correspondance')):
+            renderer=Gtk.CellRendererText();renderer.set_property('ellipsize',3)
+            column=Gtk.TreeViewColumn(caption,renderer,text=index);column.set_resizable(True)
+            if index==2:column.set_expand(True)
+            tree.append_column(column)
+        scroll=Gtk.ScrolledWindow();scroll.set_policy(Gtk.PolicyType.AUTOMATIC,Gtk.PolicyType.AUTOMATIC);scroll.add(tree);area.pack_start(scroll,True,True,0)
+        actions=box(spacing=12);busy=Gtk.Spinner();rows=[];task=LatestTask();self.subtitle_dialogs[dialog]=task;downloading=[False]
+        def fail(error):
+            busy.stop();downloading[0]=False;search.set_sensitive(True);download.set_sensitive(bool(rows))
+            status.set_text(str(error) if isinstance(error,SubtitleError) else 'Opération impossible. Réessayez ou choisissez une autre source.')
+        def search_now():
+            if self.subtitle_context()!=context:status.set_text('Le contenu a changé. Fermez cette fenêtre et relancez la recherche.');return
+            value=dict(query,title=title.get_text(),language=languages.get_active_id() or languages.get_child().get_text().strip().lower(),**{k:w.get_value_as_int() for k,w in numbers.items()})
+            try:value=validate_query(value)
+            except SubtitleError as error:status.set_text(str(error));return
+            enabled=[k for k,w in checks.items() if w.get_active() and w.get_sensitive()]
+            service=SubtitleService(read_json(self.subtitle_settings_path));rows.clear();store.clear();download.set_sensitive(False);busy.start()
+            status.set_text('Recherche dans les sources sélectionnées…');self.persist_setting('subtitle_language',value['language'])
+            def done(result):
+                busy.stop();rows.extend(result['rows'])
+                for index,row in enumerate(rows):
+                    badges=(' · Malentendants' if row['hearing'] else '')+(' · Traduction automatique' if row['machine'] else '')
+                    match='Titre concordant' if row['score']>=60 else 'À vérifier'
+                    store.append([row['language'],row.get('source',PROVIDERS[row['provider']]),row['release']+badges,match,index])
+                errors=' · '.join(PROVIDERS[k]+' : '+v for k,v in result['errors'].items())
+                status.set_text((f'{len(rows)} résultat(s).' if rows else 'Aucun résultat. Essayez le titre original ou une autre langue.')+(' '+errors if errors else ''))
+                download.set_sensitive(bool(rows))
+            task.submit(lambda cancel:service.search(value,enabled,cancel),done,fail)
+        def download_now(*_):
+            if downloading[0]:return
+            model,it=tree.get_selection().get_selected()
+            if it is None:status.set_text('Sélectionnez un sous-titre dans la liste.');return
+            row=rows[model[it][4]];service=SubtitleService(read_json(self.subtitle_settings_path))
+            downloading[0]=True;search.set_sensitive(False);download.set_sensitive(False);busy.start();status.set_text('Téléchargement du sous-titre…')
+            def work(cancel):
+                data,filename=service.download(row)
+                if cancel.is_set():return None
+                return self.subtitle_store.save(context[0],row,data,filename)
+            def done(path):
+                busy.stop();downloading[0]=False;search.set_sensitive(True);download.set_sensitive(True)
+                if path and self.activate_subtitle(context,path):status.set_text('Sous-titre téléchargé et activé. Il sera proposé automatiquement à la prochaine lecture.')
+                else:status.set_text('Sous-titre conservé localement. Le contenu a changé ou n’est plus disponible pour activation.')
+            task.submit(work,done,fail)
+        search=button('Rechercher',search_now,'ghost',symbol='search');download=button('Télécharger et activer',download_now,'primary',symbol='download')
+        download.set_sensitive(False);actions.pack_start(search,False,False,0);actions.pack_start(download,False,False,0);actions.pack_start(busy,False,False,0)
+        tree.connect('row-activated',download_now);title.connect('activate',lambda _:search_now());area.pack_start(actions,False,False,0)
+        dialog.show_all()
+        try:dialog.run()
+        finally:task.close();self.subtitle_dialogs.pop(dialog,None);dialog.destroy();self.player_activity()
+
+    def close_subtitle_dialogs(self):
+        for dialog,task in list(self.subtitle_dialogs.items()):task.close();dialog.response(Gtk.ResponseType.CLOSE)
