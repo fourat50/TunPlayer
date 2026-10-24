@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=TunPlayer
+Comment=Votre télévision, à votre rythme
+Exec=/home/fourat/Desktop/TunPlayer/start.sh
+Path=/home/fourat/Desktop/TunPlayer
+Icon=/home/fourat/Desktop/TunPlayer/assets/tunplayer.svg
+Terminal=false
+Categories=AudioVideo;Video;Player;
+StartupNotify=true

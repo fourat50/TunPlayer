@@ -1,0 +1,209 @@
+/* TunPlayer · graphite, ivory, electric lime. Native GTK 3 theme. */
+* { font-family: 'Ubuntu', 'Segoe UI', sans-serif; font-size: 13px; }
+window { background: #0d1015; color: #edf0f3; }
+.sidebar { background: #11151b; border-right: 1px solid #23282f; padding: 28px 16px 16px; }
+.brand { color: #f3f5ed; font-size: 24px; font-weight: 800; letter-spacing: -1px; }
+.brand-icon { background: #c4f478; color: #19240e; border-radius: 12px; padding: 9px; }
+.caption { color: #929ba8; font-size: 10px; font-weight: 700; letter-spacing: 1.4px; }
+.sidebar .caption { font-size: 9px; color: #7e8998; }
+.muted { color: #9da7b6; font-size: 12px; }
+.nav { background: transparent; border: 1px solid transparent; box-shadow: none; color: #a1aab9; padding: 12px 14px; border-radius: 10px; }
+.nav:hover { background: #1b212a; color: #f4f6f9; }
+.nav.active { background: linear-gradient(to right, #293525, #1e2921); border-color: #3a4931; color: #d3f6a3; font-weight: 700; }
+.nav.active label { color: #d3f6a3; }
+.nav:focus { border-color: #b9e97b; }
+.nav-count { background: #323d30; border-radius: 6px; color: #d3f6a3; font-size: 10px; padding: 2px 6px; }
+button { background: #202630; color: #e8edf3; border: 1px solid #333c48; border-radius: 9px; padding: 10px 15px; box-shadow: none; text-shadow: none; transition: background 150ms ease, border-color 150ms ease; }
+button:hover { background: #2b3440; border-color: #627080; }
+button:focus { border-color: #c4f478; box-shadow: 0 0 0 2px alpha(#c4f478, 0.16); }
+button:active { background: #35404c; }
+button:disabled { opacity: 0.4; }
+button.primary { background: #c4f478; border-color: #c4f478; color: #17200f; font-weight: 700; }
+button.primary label { color: #17200f; }
+button.primary:hover { background: #d6ff93; border-color: #d6ff93; box-shadow: 0 3px 16px alpha(#b7ef69, 0.12); }
+button.ghost { background: transparent; border-color: #36414c; }
+button.ghost:hover { background: #242d34; border-color: #65715f; }
+button.small { padding: 8px 11px; font-size: 12px; }
+button.small label { font-size: 12px; }
+button.icon-button { padding: 9px; min-width: 20px; min-height: 20px; background: transparent; border-color: transparent; }
+button.icon-button:hover { background: #2b333e; border-color: #414d5b; }
+button.favorite { background: alpha(#0c1017, 0.65); border-color: alpha(#ffffff, 0.15); padding: 6px; border-radius: 18px; }
+button.favorite:hover { background: #363442; border-color: #c4f478; }
+button.favorite.selected { background: #c4f478; border-color: #c4f478; }
+button.danger:hover { background: #3b2429; border-color: #a76371; color: #ffbbc5; }
+.header { padding: 22px 32px 20px; border-bottom: 1px solid #20262f; background: #0f1218; }
+.title { font-size: 26px; font-weight: 700; letter-spacing: -0.7px; }
+.header-subtitle { color: #8e99aa; font-size: 11px; }
+.section-title { font-size: 19px; font-weight: 700; letter-spacing: -0.4px; }
+.content { padding: 24px 32px 32px; }
+entry { background: #191f28; color: #eef1f5; border: 1px solid #2c3541; border-radius: 10px; padding: 10px 12px; box-shadow: none; caret-color: #c4f478; }
+entry:focus { background: #1b242c; border-color: #9dca62; box-shadow: 0 0 0 2px alpha(#c4f478, 0.08); }
+.search { min-width: 230px; }
+.search image { color: #8795a7; }
+.hero { border-radius: 22px; }
+.hero-title { font-size: 43px; font-weight: 800; letter-spacing: -1.7px; color: #f5f4e8; }
+.hero-copy { color: #b5c3bd; font-size: 13px; }
+.eyebrow { font-size: 9px; letter-spacing: 2px; font-weight: 700; color: #c4f478; }
+.hero-badge { background: alpha(#bfed92, 0.10); border: 1px solid alpha(#bfed92, 0.22); border-radius: 20px; padding: 6px 10px; }
+.hero-note { font-size: 10px; color: #94a89d; }
+.hero-number { color: #cad9c8; font-size: 10px; letter-spacing: 1px; }
+.quick-links { padding: 3px 0; }
+button.quick-link { background: #171d25; border-color: #2b333f; border-radius: 18px; padding: 9px 15px; }
+button.quick-link:hover { background: #242f28; border-color: #68864c; }
+.section-count { color: #c0c9d5; background: #222b35; border-radius: 12px; font-size: 10px; padding: 4px 9px; }
+.section-subtitle { color: #8995a7; font-size: 11px; }
+.filters { background: #151b23; border: 1px solid #242d39; border-radius: 12px; padding: 10px 12px; }
+.card { background: #171d25; border: 1px solid #2b3440; border-radius: 16px; padding: 8px; }
+flowboxchild:hover .card { background: #1d2630; border-color: #6b8253; box-shadow: 0 5px 18px alpha(#000000, 0.15); }
+.card-body { padding: 6px 7px 7px; }
+.channel-name { font-size: 14px; font-weight: 700; color: #edf1f6; }
+.card-category { color: #a4afbe; font-size: 11px; }
+.card-description { color: #a4b2c2; font-size: 11px; }
+.badge { color: #e1e9df; font-size: 9px; font-weight: 700; letter-spacing: 1px; background: alpha(#101a1e, 0.70); border: 1px solid alpha(#ffffff, 0.14); border-radius: 5px; padding: 5px 8px; }
+.badge.live { color: #d2f7ad; }
+.badge.demo { color: #f2dba8; }
+.live { color: #c4f478; font-size: 10px; font-weight: 700; letter-spacing: 1px; }
+.panel { background: #161c25; border: 1px solid #2a3442; border-radius: 16px; padding: 22px; }
+.panel-icon { background: #273328; border-radius: 12px; padding: 12px; }
+.empty-panel { background: linear-gradient(135deg, #19232b, #161b24); border: 1px solid #303d46; border-radius: 18px; padding: 36px 28px; }
+.empty-title { color: #ecf3e8; font-size: 23px; font-weight: 700; letter-spacing: -0.5px; }
+.source-status { background: linear-gradient(135deg, #202e24, #17211e); border: 1px solid #344534; border-radius: 12px; padding: 15px; }
+.source-status .muted { color: #a5b6a5; font-size: 11px; }
+.source-name { font-size: 17px; font-weight: 700; }
+.footer { background: #121820; border-top: 1px solid #2a323e; padding: 10px 24px; }
+.footer-title { color: #b8c5cf; font-size: 11px; }
+/* Cinema player: full-width stage, quiet chrome, centered transport. */
+.video-player { background: #08090c; }
+.player-console { background: #101115; border-top: 1px solid #23252c; padding: 0; }
+.player-info { padding: 10px 20px 2px; }
+.player-title { color: #fafbfc; font-size: 16px; font-weight: 700; letter-spacing: -0.3px; }
+.player-status { color: #858b98; font-size: 11px; }
+.player-kind { color: #8c93a1; font-size: 10px; font-weight: 700; letter-spacing: 1.6px; padding: 5px 0 5px 14px; }
+.player-kind.on-air { color: #bceba0; }
+.player-controls { padding: 0 20px 10px; }
+.player-split > separator { min-width: 6px; padding: 0; margin: 0; border: none; background: #26313c; }
+.player-split > separator:hover, .player-split > separator:focus { background: #8daa70; }
+.browser-current { color: #c4e1a8; font-size: 11px; }
+.player-adjacent { padding: 2px 28px 0; }
+button.player-neighbor { background: transparent; border-color: transparent; border-radius: 8px; padding: 7px 10px; }
+button.player-neighbor:hover { background: #22262d; border-color: #3e4653; }
+button.player-neighbor:disabled { opacity: 0.35; }
+.neighbor-caption { font-size: 9px; color: #929baa; letter-spacing: 1px; }
+.neighbor-name { font-size: 12px; color: #e6eaf1; }
+.player-browser { background: #12161d; border-left: 1px solid #313a46; padding: 14px 16px; }
+.player-browser .caption { color: #a5b3c4; }
+.player-browser .muted { font-size: 11px; color: #929fb1; }
+.player-browser .channel-name { font-size: 13px; }
+.player-browser entry { min-width: 0; padding: 8px 10px; }
+.player-browser combobox button { padding: 9px 10px; }
+.player-browser combobox button label { font-size: 11px; }
+.player-browser-list { background: #12161d; color: #d6dfeb; font-size: 12px; }
+.player-browser-list:selected { background: #263b2e; color: #e5f7d2; }
+.player-browser-list:hover { background: #1d2935; }
+.player-transport { padding: 0; }
+.player-timeline { padding: 0 20px; }
+.player-time { color: #b4bac6; font-size: 11px; font-family: 'DejaVu Sans Mono', monospace; }
+button.player-tool, button.player-back, button.player-seek { background: transparent; border: 1px solid transparent; border-radius: 24px; padding: 8px; min-width: 18px; min-height: 18px; box-shadow: none; }
+button.player-back { border-color: #32353e; background: #191b21; }
+button.player-tool:hover, button.player-back:hover, button.player-seek:hover { background: #282b34; border-color: #434855; }
+button.player-tool:checked { background: #282b34; border-color: #69707d; }
+button.player-tool:focus, button.player-back:focus, button.player-seek:focus { border-color: #c4f478; box-shadow: 0 0 0 2px alpha(#c4f478, 0.16); }
+button.player-seek { padding: 9px; }
+button.player-seek label { color: #d8dce5; font-size: 11px; font-weight: 600; }
+button.player-toggle { background: #f1f3f6; border: 1px solid #ffffff; color: #111318; border-radius: 30px; min-width: 26px; min-height: 26px; padding: 10px; box-shadow: none; }
+button.player-toggle:hover { background: #ffffff; border-color: #ffffff; box-shadow: 0 0 0 4px alpha(#ffffff, 0.08); }
+button.player-toggle:active { background: #ccd2dc; }
+button.player-toggle:focus { border-color: #c4f478; box-shadow: 0 0 0 3px alpha(#c4f478, 0.3); }
+.player-timeline scale { padding: 9px 0; }
+.player-timeline scale trough { min-height: 3px; background: #333743; border-radius: 3px; }
+.player-timeline scale highlight { background: #c4f478; }
+.player-timeline scale slider { min-width: 10px; min-height: 10px; border-radius: 8px; background: #e4fbcf; }
+.player-timeline scale:hover slider { background: #f0ffe0; box-shadow: 0 0 0 4px alpha(#c4f478, 0.14); }
+.player-settings { background: #1a1c23; border: 1px solid #3b404b; border-radius: 14px; box-shadow: 0 8px 24px alpha(#000000, 0.4); }
+.player-settings-content { padding: 18px; }
+.settings-title { font-size: 15px; font-weight: 700; color: #f2f4f7; }
+.diagnostic-text { color: #acb8ca; font-size: 11px; padding-top: 10px; }
+.resume-dialog .channel-name { font-size: 18px; }
+.player-settings separator { background: #333742; min-height: 1px; }
+.player-settings .caption { color: #9098a8; font-size: 9px; }
+.player-aspect button { background: #252832; border: 1px solid #424858; border-radius: 8px; padding: 10px 12px; }
+.player-aspect button label { font-size: 12px; }
+button.player-setting-action { background: transparent; border-color: transparent; padding: 10px; border-radius: 8px; }
+button.player-setting-action:hover { background: #2b303b; border-color: #414958; }
+button.record { background: #33232c; color: #f0b0b6; border-color: #563c48; font-size: 11px; padding: 10px; border-radius: 8px; }
+button.record label { color: #f0b0b6; font-size: 11px; }
+button.record:hover { background: #4a2c36; border-color: #bd7783; }
+button.record.active { background: #6b2e3d; border-color: #ec8a9c; }
+button.record.active label { color: #ffe1e6; }
+button.player-tool.recording { background: #4b2632; border-color: #db7c8f; }
+.pagination { background: #151c25; border: 1px solid #273241; border-radius: 12px; padding: 10px; }
+.toast { background: #263b29; border-bottom: 1px solid #405c37; color: #e0f6c8; padding: 12px 24px; font-size: 12px; }
+.error { color: #ffc1c6; }
+scrolledwindow { border: none; }
+viewport { background: transparent; }
+scrollbar { background: transparent; }
+scrollbar slider { background: #3e4b59; border-radius: 10px; min-width: 5px; min-height: 30px; }
+scrollbar slider:hover { background: #6e8061; }
+flowboxchild { padding: 0; background: transparent; border: none; }
+flowboxchild:selected { background: transparent; }
+combobox button { background: #1d2631; padding: 8px 12px; border-color: #354354; }
+combobox window, menu { background: #1b2430; color: #edf3fa; border: 1px solid #374657; }
+menuitem { padding: 8px 12px; }
+menuitem:hover { background: #34452d; color: #d1f5a0; }
+dialog { background: #111820; }
+dialog .dialog-vbox { padding: 16px; }
+dialog headerbar { background: #17212b; }
+scale { padding: 10px 0; }
+scale trough { background: #303e4b; min-height: 4px; border: none; border-radius: 4px; }
+scale highlight { background: #c4f478; border: none; border-radius: 4px; }
+scale slider { background: #d4f8a9; min-width: 10px; min-height: 10px; border: none; box-shadow: none; }
+progressbar trough { background: #303b47; border: none; min-height: 3px; border-radius: 3px; }
+progressbar progress { background: #c4f478; min-height: 3px; border: none; border-radius: 3px; }
+textview, textview text { background: #18212c; color: #dde7f0; }
+separator { background: #2b3340; min-height: 1px; }
+/* Media catalogue: real provider artwork, portrait VOD and compact live rows. */
+.poster-card { padding: 6px; }
+.poster-card .card-body { padding: 6px 5px; }
+.poster-card .channel-name { font-size: 13px; }
+.poster-card button.small { padding: 8px 6px; }
+.poster-card button.small label { font-size: 11px; }
+.badge.vod { color: #eee5ff; background: alpha(#211a31, 0.82); }
+.media-metadata { color: #c9ddae; font-size: 10px; }
+.list-card { background: #171f29; border: 1px solid #2b3745; border-radius: 13px; padding: 12px; }
+.list-card:hover { background: #1e2934; border-color: #667e52; }
+.series-detail { background: linear-gradient(135deg, #1c2631, #18201f); border: 1px solid #35423e; border-radius: 18px; padding: 22px; }
+button.view-toggle { padding: 8px; background: #1a242d; border-color: #384556; }
+button.view-toggle.selected { background: #3a4a2b; border-color: #96ba68; }
+button.view-toggle:hover { border-color: #c4f478; }
+.active-filters { color: #c8e7a6; font-size: 11px; }
+checkbutton { color: #becad7; font-size: 11px; padding: 4px 0; }
+checkbutton check { background: #1b2632; border: 1px solid #526276; border-radius: 4px; min-width: 15px; min-height: 15px; }
+checkbutton check:checked { color: #17200f; background: #c4f478; border-color: #c4f478; }
+checkbutton:focus check { border-color: #d7f5b0; box-shadow: 0 0 0 2px alpha(#c4f478, 0.15); }
+checkbutton:disabled { opacity: 0.4; }
+.filters .caption { font-size: 9px; }
+.filters combobox button { padding: 8px 10px; }
+.filters combobox button label { font-size: 11px; }
+.filters > box { padding: 0; }
+.sidebar .nav { padding-top: 10px; padding-bottom: 10px; }
+/* Persistent navigation rail and a virtualized, searchable category menu. */
+.sidebar.compact { padding: 24px 10px 16px; }
+.sidebar.compact .nav { padding: 11px 10px; border-radius: 10px; }
+.sidebar.compact .brand-icon { padding: 8px; }
+.category-panel { background: #111820; border-right: 1px solid #28323f; padding: 24px 12px 14px; }
+.category-panel entry { min-width: 0; font-size: 11px; padding: 8px; }
+.category-list { background: #111820; color: #aab8c8; font-size: 11px; border: none; }
+.category-list:selected { background: #30432a; color: #def5bf; }
+.category-list:hover { background: #1d2b36; }
+.category-list.view:selected:focus { background: #344c2b; color: #e0f7c5; }
+.category-list header { background: transparent; }
+.category-panel .caption { font-size: 9px; padding: 0 6px; }
+.category-split > separator { min-width: 7px; background: #202d38; }
+.category-split > separator:hover { background: #88ac56; }
+/* Discover uses horizontal poster shelves, without a category column. */
+.media-detail { background: linear-gradient(135deg, #1a2631, #171f25); border: 1px solid #34424b; border-radius: 18px; padding: 26px; }
+.detail-title { color: #f4f3e7; font-size: 27px; font-weight: 700; letter-spacing: -0.7px; }
+.detail-plot { color: #c4cfda; font-size: 13px; }
+.playback-notice { background: #273824; border: 1px solid #4b6435; border-radius: 8px; margin: 6px 16px; padding: 6px 12px; }
+.playback-notice .muted { color: #e0efcc; }
+.episode-progress { color: #c7e5a4; font-size: 11px; }
