@@ -1,0 +1,17 @@
+#!/bin/sh
+set -eu
+ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+export TUNPLAYER_BUNDLE="$ROOT"
+export LD_LIBRARY_PATH="$ROOT/runtime/lib"
+export PATH="$ROOT/runtime/bin:/usr/bin:/bin"
+export GI_TYPELIB_PATH="$ROOT/runtime/lib/girepository-1.0"
+export GDK_BACKEND=x11
+export GSETTINGS_SCHEMA_DIR="$ROOT/runtime/share/glib-2.0/schemas"
+export GSETTINGS_BACKEND=memory
+export GTK_DATA_PREFIX="$ROOT/runtime"
+export GTK_EXE_PREFIX="$ROOT/runtime"
+export GIO_MODULE_DIR="$ROOT/runtime/gio-modules"
+export SSL_CERT_FILE="$ROOT/runtime/share/ca-certificates.crt"
+export XDG_DATA_DIRS="$ROOT/runtime/share:/usr/local/share:/usr/share"
+unset PYTHONHOME PYTHONPATH GTK_PATH GTK_MODULES GTK3_MODULES GTK_IM_MODULE GIO_EXTRA_MODULES GDK_PIXBUF_MODULE_FILE
+exec "$ROOT/runtime/bin/python3" -I -B "$ROOT/bootstrap.py" "$@"

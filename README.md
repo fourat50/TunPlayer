@@ -64,6 +64,54 @@ python3 scripts/publish_release.py --tag v1.0.0 --push-source
 
 Cette commande pousse les outils de construction sur `main`, construit et verifie le paquet depuis le tag existant, prepare une release brouillon, joint le `.deb` et `SHA256SUMS`, puis telecharge ces deux fichiers pour les comparer aux originaux avant de publier la release. Un tag different ou un fichier distant incompatible arrete la publication ; aucun fichier existant n'est ecrase automatiquement. Les notes sont dans `packaging/releases/v1.0.0.md`.
 
+## Version Linux autonome
+
+Une recette distincte embarque Python 3.12, PyGObject / Cairo, GTK 3, mpv,
+FFmpeg et leurs bibliothèques, les décodeurs SVG, les certificats HTTPS et
+une police. Le programme reste celui du tag **v1.0.0**, sans changement du
+lecteur ni des données utilisateur. Le petit `.deb` existant reste disponible.
+
+Cette première construction cible **Ubuntu 24.04 / Linux Mint 22, x86_64**.
+Le noyau, glibc 2.39 ou ultérieure, le serveur X11 / XWayland et les pilotes
+matériels restent fournis par le système. Ce n’est pas une promesse de
+compatibilité avec toutes les distributions. La séparation des bibliothèques
+système suit le [principe des paquets Linux autonomes](https://docs.appimage.org/introduction/concepts.html).
+
+Depuis le projet, sur la machine de construction disposant des dépendances :
+
+```bash
+/usr/bin/python3 scripts/build_standalone.py --output-dir dist/linux-standalone
+/usr/bin/python3 scripts/verify_standalone.py dist/linux-standalone/tunplayer_1.0.0+standalone1_amd64.deb
+```
+
+La recette refuse d’écraser un dossier de construction existant. Elle produit :
+
+- `tunplayer_1.0.0+standalone1_amd64.deb` : installation dans `/opt/tunplayer`, entrée dans le menu ; remplace le paquet léger sans toucher au profil ;
+- `TunPlayer-1.0.0-linux-x86_64-standalone.tar.gz` : archive portable à extraire, puis lancer `./AppRun` sans sudo ;
+- `Standalone-SHA256SUMS` : empreintes des deux fichiers.
+
+Installation du paquet autonome :
+
+```bash
+sudo apt install ./tunplayer_1.0.0+standalone1_amd64.deb
+```
+
+APT n’a plus à installer Python, GTK, mpv ou FFmpeg pour cette variante.
+Le paquet déclare seulement sa version minimale de glibc et recommande
+XWayland. Le runtime reste privé ; les autres logiciels ne sont pas modifiés.
+Ses composants doivent être mis à jour en reconstruisant le paquet autonome.
+
+`build-info.json` conserve le commit de l’application et les versions des
+paquets embarqués ; `licenses/` contient leurs notices et licences. Les sources
+des paquets sont référencées dans le fichier README fourni avec le runtime.
+
+La vérification extrait le vrai `.deb` dans un chemin avec espaces et accents,
+contrôle la résolution des dépendances ELF vers les bibliothèques privées,
+importe GTK, décode un SVG, charge les certificats, décode le média local avec
+FFmpeg et mpv et teste l’installation / suppression dans une racine dpkg
+temporaire. Elle ne modifie pas l’installation système. La lecture graphique
+complète et les autres distributions restent à valider dans une session de bureau.
+
 ## Interface
 
 L’interface adopte une palette graphite, ivoire et citron vert. L’accueil **Découvrir** présente uniquement trois rangées d’affiches : derniers films ajoutés, dernières séries ajoutées et Tendances. Il ne comporte ni colonne de catégories ni panneau de filtres. Les rangées défilent horizontalement ; **Tout voir** ouvre la rubrique correspondante avec le tri des ajouts récents. La recherche de l’en-tête filtre aussi ces sélections.
