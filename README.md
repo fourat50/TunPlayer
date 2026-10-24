@@ -112,6 +112,19 @@ FFmpeg et mpv et teste l’installation / suppression dans une racine dpkg
 temporaire. Elle ne modifie pas l’installation système. La lecture graphique
 complète et les autres distributions restent à valider dans une session de bureau.
 
+Pour ajouter les fichiers autonomes vérifiés à la release 1.0.0 existante,
+depuis un terminal connecté à GitHub CLI :
+
+```bash
+python3 scripts/publish_standalone.py --push-source
+```
+
+Cette commande vérifie le rapport local et les empreintes, compare le tag
+GitHub au programme embarqué, pousse `main`, ajoute les deux fichiers avec
+leurs empreintes et instructions, puis télécharge les fichiers publiés pour
+les comparer. Les fichiers existants ne sont pas écrasés. Les notes de release
+sont complétées après vérification des téléchargements.
+
 ## Interface
 
 L’interface adopte une palette graphite, ivoire et citron vert. L’accueil **Découvrir** présente uniquement trois rangées d’affiches : derniers films ajoutés, dernières séries ajoutées et Tendances. Il ne comporte ni colonne de catégories ni panneau de filtres. Les rangées défilent horizontalement ; **Tout voir** ouvre la rubrique correspondante avec le tri des ajouts récents. La recherche de l’en-tête filtre aussi ces sélections.
