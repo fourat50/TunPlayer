@@ -15,6 +15,9 @@ from tunplayer.visuals import draw_cover
 
 def assert_embedded(app):
     """Check the configured host and actual X11 child hierarchy, not just decoding."""
+    assert app.view_stack.get_visible_child_name()=='player','Catalogue and player pages overlap'
+    assert not app.workspace.get_mapped(),'Catalogue remained mapped behind the video'
+    assert app.video_stack.get_visible_child_name()=='video' and not app.radio_stage.get_mapped(),'Radio surface overlaps video'
     host=app.video.get_window().get_xid()
     assert app.player.get('wid')==str(host),'mpv lost the GTK host window'
     assert app.player.get('current-vo') in ('gpu','x11'),'Unexpected video output backend'
@@ -188,6 +191,7 @@ with tempfile.TemporaryDirectory(prefix='tunplayer-ui-') as data:
         assert app.current is None and app.view=='episodes' and not app.next_episode.pending
         assert app.series_id==fixture['series']['id'],'Playback return lost parent series'
         assert app.sidebar.get_visible(),'Return must restore navigation'
+        assert app.view_stack.get_visible_child_name()=='catalog' and not app.playback.get_mapped(),'Video remained mapped over the episode list'
         capture('12-back-to-episodes')
         app.stop_playback();assert app.current is None and app.view=='home'
         app.close();return False

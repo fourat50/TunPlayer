@@ -8,6 +8,7 @@ gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, GdkPixbuf
 
 ICONS = {
+    'download': '<path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/>',
     'radio': '<rect x="3" y="8" width="18" height="13" rx="3"/><path d="M5 8 19 3M6 12h5m-5 4h5"/><circle cx="16" cy="15" r="2"/>',
     'home': '<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/>',
     'live': '<rect x="3" y="6" width="18" height="14" rx="3"/><path d="m8 2 4 4 4-4"/><path d="m10 10 5 3-5 3z"/>',

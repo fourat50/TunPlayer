@@ -2,7 +2,7 @@
 
 Lecteur IPTV de bureau, développé d’abord pour Linux. Interface française graphite et citron vert, panorama vectoriel original, cartes illustrées et bibliothèque locale. Projet inspiré des usages d’[UHF](https://getuhf.com/), avec une identité et une implémentation propres.
 
-**Version 1.1.1 : filtres Radio explicites et compteurs de genres corrigés. Pays et catégories, favoris locaux, lecteur audio et distribution autonome Linux.**
+**Version 1.2.0 : téléchargements de films, saisons et épisodes, lecture locale et transitions du lecteur corrigées. Radio, IPTV et distribution autonome Linux.**
 
 ## Démarrer sous Linux
 
@@ -175,6 +175,44 @@ La commande pousse `main` et le tag `v1.1.0`, qui désigne le commit du paquet,
 prépare la release en brouillon, joint les installateurs et leurs empreintes,
 puis vérifie les téléchargements avant publication. Les versions et fichiers
 existants ne sont pas écrasés.
+
+## Télécharger films, saisons et épisodes
+
+- **Film** : ouvrez sa fiche puis cliquez sur **Télécharger**.
+- **Épisode** : utilisez l’icône de téléchargement dans sa ligne.
+- **Saison** : choisissez une saison dans sa liste, puis **Télécharger la saison**.
+  Tous ses épisodes sont ajoutés, même lorsqu’une recherche ou une pagination en masque certains.
+
+Choisissez le dossier de destination. La rubrique **Téléchargements** dans
+**Votre espace** affiche les transferts et leur progression. Un transfert
+s’exécute à la fois, hors du fil GTK. Vous pouvez mettre en pause, reprendre,
+annuler, ouvrir le dossier et lire un fichier terminé directement dans TunPlayer.
+Les épisodes sont rangés dans des dossiers par série et saison.
+
+À la fermeture, les transferts sont mis en pause ; **Reprendre tout** permet
+de relancer la file. La reprise d’un fichier HTTP utilise une plage validée
+et un ETag fort pour éviter de mélanger deux versions du fichier. Sinon le
+transfert recommence au début. Les téléchargements HLS / DASH passent par
+FFmpeg et reprennent depuis le début. Les fichiers existants ne sont pas
+écrasés et un transfert incomplet reste séparé du fichier terminé.
+
+L’historique est conservé dans `downloads.json` dans le profil de l’application,
+avec des permissions privées. Les liens peuvent contenir les identifiants du
+fournisseur ; ils ne sont pas affichés dans la liste des transferts. Le direct
+et les radios gardent leur fonction d’enregistrement existante.
+
+Le catalogue et le lecteur utilisent désormais des [Gtk.Stack](https://docs.gtk.org/gtk3/class.Stack.html)
+sans transition : une seule vue est affichée à la fois. L’écran Radio est
+également séparé de la fenêtre vidéo native. Le flux est lancé après la mise
+en place de sa surface ; Stop et les changements rapides annulent un lancement
+en attente. La navigation latérale peut défiler si la hauteur disponible diminue.
+
+Les tests de téléchargement utilisent des réponses HTTP contrôlées et une
+conversion HLS locale avec le vrai FFmpeg. Les lancements différés et la lecture
+locale sont testés ; le rendu X11 complet reste à vérifier depuis le bureau avec
+`python3 scripts/smoke_ui.py`. Les mécanismes de reprise suivent le
+[protocole HTTP](https://www.rfc-editor.org/rfc/rfc9110.html#name-range) et le
+suivi de transfert utilise la [sortie de progression de FFmpeg](https://ffmpeg.org/ffmpeg.html#Generic-options).
 
 ## Interface
 

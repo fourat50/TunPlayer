@@ -28,6 +28,7 @@ from .playback_flow import ReconnectPolicy, NextEpisodeCountdown, remote_stream
 from .navigation import NavigationMemory
 from .player_catalog import PlayerCatalog
 from .radio_ui import RadioMixin
+from .download_ui import DownloadMixin
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -74,7 +75,7 @@ def navigation(text, symbol, callback):
     w.get_accessible().set_name(text)
     return w
 
-class App(RadioMixin,Gtk.Application):
+class App(DownloadMixin,RadioMixin,Gtk.Application):
     def __init__(self, args):
         super().__init__(application_id='tn.tunplayer.desktop', flags=Gio.ApplicationFlags.NON_UNIQUE if args.data_dir else Gio.ApplicationFlags.FLAGS_NONE)
         self.args = args
@@ -129,6 +130,7 @@ class App(RadioMixin,Gtk.Application):
         self.position = 0.; self.duration = 0.; self.seeking = False; self.tick_count = 0
         self.media_loaded = False; self.resume_target = None; self.resume_deadline = 0
         self.init_radio()
+        self.init_downloads()
         self.connect('activate',self.activate)
 
     def write_error(self,_):
@@ -158,7 +160,10 @@ class App(RadioMixin,Gtk.Application):
         self.window.connect('scroll-event',self.player_activity)
         root = box(True); self.window.add(root)
         body = box(); root.pack_start(body,True,True,0)
-        self.sidebar = box(True,4,'sidebar'); self.sidebar.set_size_request(202,-1); body.pack_start(self.sidebar,False,False,0)
+        self.sidebar = box(True,4,'sidebar'); self.sidebar.set_size_request(202,-1)
+        self.sidebar_scroll=Gtk.ScrolledWindow();self.sidebar_scroll.set_policy(Gtk.PolicyType.NEVER,Gtk.PolicyType.AUTOMATIC)
+        self.sidebar_scroll.set_shadow_type(Gtk.ShadowType.NONE);self.sidebar_scroll.add(self.sidebar)
+        body.pack_start(self.sidebar_scroll,False,False,0)
         branding = box(spacing=10)
         brand_icon=box(css='brand-icon'); brand_icon.pack_start(icon('play',22,'#19240e'),False,False,0)
         branding.pack_start(brand_icon,False,False,0)
@@ -172,7 +177,7 @@ class App(RadioMixin,Gtk.Application):
         self.sidebar_toggle=button('',self.toggle_sidebar,'icon-button',symbol='back',tooltip='Réduire ou agrandir Votre espace')
         section.pack_start(self.sidebar_toggle,False,False,0);self.sidebar.pack_start(section,False,False,2)
         self.nav = {}
-        for view,text,symbol in [('home','Découvrir','home'),('live','Télévision','live'),('radio','Radio','radio'),('movie','Films','movie'),('series','Séries','series'),('guide','Guide TV','guide'),('favorites','Favoris','heart'),('history','Historique','history')]:
+        for view,text,symbol in [('home','Découvrir','home'),('live','Télévision','live'),('radio','Radio','radio'),('movie','Films','movie'),('series','Séries','series'),('downloads','Téléchargements','download'),('guide','Guide TV','guide'),('favorites','Favoris','heart'),('history','Historique','history')]:
             b = navigation(text,symbol,lambda v=view:self.navigate(v))
             self.sidebar.pack_start(b,False,False,0); self.nav[view]=b
         self.sidebar.pack_start(Gtk.Separator(),False,False,18)
@@ -207,7 +212,10 @@ class App(RadioMixin,Gtk.Application):
         self.scroll.connect('scroll-event',self.catalog_scroll_event)
         self.workspace=Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL)
         self.workspace.set_wide_handle(True);self.workspace.get_style_context().add_class('category-split')
-        right.pack_start(self.workspace,True,True,0)
+        self.view_stack=Gtk.Stack();self.view_stack.set_transition_type(Gtk.StackTransitionType.NONE)
+        self.view_stack.set_hhomogeneous(False);self.view_stack.set_vhomogeneous(False)
+        right.pack_start(self.view_stack,True,True,0)
+        self.view_stack.add_named(self.workspace,'catalog')
         self.category_panel=box(True,14,'category-panel');self.category_panel.set_size_request(150,-1)
         self.category_panel.pack_start(label('CATÉGORIES','caption'),False,False,0)
         self.category_search=Gtk.SearchEntry();self.category_search.set_placeholder_text('Une catégorie…')
@@ -234,14 +242,17 @@ class App(RadioMixin,Gtk.Application):
         self.workspace.pack2(self.scroll,resize=True,shrink=True)
         self.workspace.set_position(self.category_width)
         self.workspace.connect('notify::position',self.category_width_changed)
-        self.playback = box(True,css='video-player'); right.pack_start(self.playback,True,True,0)
+        self.playback = box(True,css='video-player');self.view_stack.add_named(self.playback,'player')
+        self.view_stack.set_visible_child_name('catalog')
         stage=Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL);self.player_split=stage
         stage.set_wide_handle(True);stage.get_style_context().add_class('player-split')
         self.playback.pack_start(stage,True,True,0)
         self.video = Gtk.DrawingArea(); self.video.set_size_request(640,320); self.video.set_hexpand(True); self.video.set_vexpand(True)
         self.video.set_has_window(True)
         self.video.set_can_focus(True)
-        video_overlay=Gtk.Overlay();video_overlay.add(self.video)
+        self.video_stack=Gtk.Stack();self.video_stack.set_transition_type(Gtk.StackTransitionType.NONE)
+        self.video_stack.set_hhomogeneous(False);self.video_stack.set_vhomogeneous(False)
+        self.video_stack.add_named(self.video,'video')
         self.radio_stage=box(True,18,'radio-stage');self.radio_stage.set_halign(Gtk.Align.FILL);self.radio_stage.set_valign(Gtk.Align.FILL)
         self.radio_stage.pack_start(space(),True,True,0)
         radio_mark=icon('radio',80,'#c4f478');radio_mark.set_halign(Gtk.Align.CENTER)
@@ -257,7 +268,8 @@ class App(RadioMixin,Gtk.Application):
         browse_radio=button('Parcourir les radios',lambda:self.navigate('radio'),'ghost',symbol='radio');browse_radio.set_halign(Gtk.Align.CENTER)
         self.radio_stage.pack_start(browse_radio,False,False,0);self.radio_stage.pack_start(space(),True,True,0)
         self.radio_stage.show_all();self.radio_stage.set_no_show_all(True);self.radio_stage.hide()
-        video_overlay.add_overlay(self.radio_stage);stage.pack1(video_overlay,resize=True,shrink=False)
+        self.video_stack.add_named(self.radio_stage,'radio');self.video_stack.set_visible_child_name('video')
+        stage.pack1(self.video_stack,resize=True,shrink=False)
         self.player_browser=self.build_player_browser();stage.pack2(self.player_browser,resize=False,shrink=False)
         stage.connect('size-allocate',self.resize_player_browser)
         stage.connect('notify::position',self.player_browser_width_changed)
@@ -382,6 +394,7 @@ class App(RadioMixin,Gtk.Application):
         self.apply_sidebar(); self.toast_label.hide(); self.playback.hide(); self.return_button.hide(); self.navigate('home')
         GLib.timeout_add(500,self.tick)
         self.idle_timer=GLib.timeout_add(100,self.check_player_idle)
+        self.download_timer=GLib.timeout_add(500,self.download_tick)
         if self.args.screenshot: GLib.timeout_add(900,self.screenshot)
 
     def notify(self, text, error=False):
@@ -405,7 +418,7 @@ class App(RadioMixin,Gtk.Application):
             self.navigation.pages[self.view]=self.page
             self.view_filters[self.view]=(self.group,self.source_id,dict(self.filter_options),self.sort)
             self.view_queries[self.view]=self.query
-        elif self.view=='episodes':self.navigation.pages['episodes']=self.page
+        elif self.view in ('episodes','downloads'):self.navigation.pages[self.view]=self.page
         self.view=view;self.page=self.navigation.pages.get(view,0)
         self.query=self.view_queries.get(view,'');self.search.set_text(self.query)
         self.group,self.source_id,options,self.sort=self.view_filters.get(view,(None,None,{},None))
@@ -414,19 +427,25 @@ class App(RadioMixin,Gtk.Application):
             self.toggle_fullscreen()
         for name,b in self.nav.items():
             ctx=b.get_style_context(); ctx.add_class('active') if name==view else ctx.remove_class('active')
-        self.heading.set_text({'home':'Découvrir','live':'Télévision','radio':'Radio','movie':'Films','series':'Séries','episodes':'Saisons & épisodes','details':'Fiche du contenu','guide':'Guide TV','favorites':'Vos favoris','history':'Reprendre le fil','sources':'Mes sources','settings':'Préférences','player':'À l’écran'}.get(view,view))
+        self.heading.set_text({'home':'Découvrir','live':'Télévision','radio':'Radio','movie':'Films','series':'Séries','downloads':'Téléchargements','episodes':'Saisons & épisodes','details':'Fiche du contenu','guide':'Guide TV','favorites':'Vos favoris','history':'Reprendre le fil','sources':'Mes sources','settings':'Préférences','player':'À l’écran'}.get(view,view))
         self.heading_subtitle.set_text({'home':'Votre prochain bon moment.','live':'Le monde en direct, à votre rythme.',
-            'radio':'Des voix et des musiques du monde entier.','movie':'Le cinéma s’invite chez vous.','series':'Une nouvelle histoire, épisode après épisode.','episodes':'Choisissez votre prochaine séance.','guide':'Choisissez la suite de votre soirée.',
+            'downloads':'Films et épisodes, prêts pour vos déplacements.','radio':'Des voix et des musiques du monde entier.','movie':'Le cinéma s’invite chez vous.','series':'Une nouvelle histoire, épisode après épisode.','episodes':'Choisissez votre prochaine séance.','guide':'Choisissez la suite de votre soirée.',
             'details':'Synopsis, distribution et reprise de lecture.',
             'favorites':'Votre sélection, toujours à portée de main.','history':'Retrouvez ce que vous avez aimé.',
             'sources':'Toutes vos playlists au même endroit.','settings':'Un espace à votre image.',
             'player':'Installez-vous. Profitez du moment.'}.get(view,''))
-        self.playback.set_visible(view=='player'); self.scroll.set_visible(view!='player')
-        self.workspace.set_visible(view!='player')
         if hasattr(self,'header'):self.header.set_visible(view!='player' and not self.fullscreen)
         if hasattr(self,'bottom'):self.bottom.set_visible(view!='player' and not self.fullscreen)
         if hasattr(self,'sidebar'):self.sidebar.set_visible(view!='player' and not self.fullscreen)
-        if view!='player' and hasattr(self,'player_settings'):self.player_settings.popdown()
+        if hasattr(self,'sidebar_scroll'):self.sidebar_scroll.set_visible(view!='player' and not self.fullscreen)
+        if hasattr(self,'player_settings'):self.player_settings.popdown()
+        # Hide the old page before mapping the new one. Gtk.Stack guarantees that
+        # the native mpv surface and catalogue cannot paint over one another.
+        if view=='player':self.workspace.set_visible(False)
+        else:self.playback.set_visible(False)
+        self.workspace.set_visible(view!='player');self.playback.set_visible(view=='player')
+        self.scroll.set_visible(view!='player')
+        if hasattr(self,'view_stack'):self.view_stack.set_visible_child_name('player' if view=='player' else 'catalog')
         self.category_panel.set_visible(view in ('live','movie','series','favorites','history','radio'))
         if hasattr(self,'radio_country_box'):self.radio_country_box.set_visible(view=='radio')
         if hasattr(self,'category_tree'):self.category_tree.get_columns()[1].set_visible(view!='radio')
@@ -472,6 +491,7 @@ class App(RadioMixin,Gtk.Application):
         collapsed=self.sidebar_collapsed;context=self.sidebar.get_style_context()
         context.add_class('compact') if collapsed else context.remove_class('compact')
         self.sidebar.set_size_request(66 if collapsed else 202,-1)
+        if hasattr(self,'sidebar_scroll'):self.sidebar_scroll.set_min_content_width(66 if collapsed else 202)
         self.brand_title.set_visible(not collapsed);self.space_caption.set_visible(not collapsed)
         for widget in self.sidebar_extras:widget.set_visible(not collapsed)
         for key,nav in self.nav.items():
@@ -550,6 +570,7 @@ class App(RadioMixin,Gtk.Application):
             elif self.view=='episodes':self.render_series()
             elif self.view=='details':self.render_details()
             elif self.view=='radio':self.render_radio()
+            elif self.view=='downloads':self.render_downloads()
             self.content.show_all();return
         self.active_catalog_request=self.catalog_request()
         cached=self.catalog_reader.lookup(self.active_catalog_request)
@@ -909,6 +930,7 @@ class App(RadioMixin,Gtk.Application):
         row.pack_start(details,True,True,0)
         if channel['kind'] in ('movie','series') and not channel.get('demo'):
             row.pack_start(button('',lambda:self.open_details(channel),'icon-button',symbol='info',tooltip='Voir la fiche'),False,False,0)
+        if channel['kind'] in ('movie','episode') and not channel.get('demo'):row.pack_start(self.download_button(channel,True),False,False,0)
         if not channel.get('demo'):row.pack_start(self.favorite_button(channel),False,False,0)
         row.pack_start(button(self.content_action(channel),lambda:self.play(channel),'small',symbol='play'),False,False,0)
         return row
@@ -977,6 +999,7 @@ class App(RadioMixin,Gtk.Application):
         info=self.detail_copy(channel);actions=box(spacing=10)
         text='Revoir' if channel.get('completed') else 'Reprendre' if channel.get('position',0)>0 else 'Regarder'
         actions.pack_start(button(text,lambda:self.play(channel),'primary',symbol='play'),False,False,0)
+        if channel['url'].startswith(('http://','https://')):actions.pack_start(self.download_button(channel),False,False,0)
         actions.pack_start(self.favorite_button(channel),False,False,0)
         refresh=button('Actualiser la fiche',lambda:self.refresh_details(channel),'ghost',symbol='refresh')
         refresh.set_sensitive(not self.detail_loading);actions.pack_start(refresh,False,False,0)
@@ -1043,6 +1066,10 @@ class App(RadioMixin,Gtk.Application):
             choices=[('all','Toutes les saisons')]+[(str(s),f'Saison {s}') for s in seasons]
             tools=box(spacing=14)
             tools.pack_start(self.combo(choices,self.season if self.season is not None else 'all',self.change_season),False,False,0)
+            season_download=button('Télécharger la saison',self.download_season,'ghost',symbol='download')
+            season_download.set_sensitive(self.season is not None)
+            season_download.set_tooltip_text('Télécharger tous les épisodes de la saison sélectionnée' if self.season is not None else 'Choisissez une saison pour la télécharger')
+            tools.pack_start(season_download,False,False,0)
             search=Gtk.SearchEntry();search.set_placeholder_text('Rechercher un épisode…');search.set_text(self.episode_query)
             self.episode_search=search
             search.connect('search-changed',lambda w:self.search_episodes(w.get_text(),w.get_position()))
@@ -1419,7 +1446,7 @@ class App(RadioMixin,Gtk.Application):
         if hasattr(self,'player_split'):self.resize_player_browser(self.player_split,self.player_split.get_allocation())
         self.refresh_player_catalog(focus=True)
 
-    def player_browser_visible(self):return self.browser_open and not self.browser_auto_collapsed
+    def player_browser_visible(self):return self.browser_open and not self.browser_auto_collapsed and not (self.current and self.current.get('local_download'))
 
     def resize_player_browser(self,paned,allocation):
         if self.closing or self.view!='player' or allocation.width<640:return
@@ -1487,6 +1514,8 @@ class App(RadioMixin,Gtk.Application):
 
     def refresh_player_catalog(self,focus=False):
         if self.closing or self.view!='player' or not self.current or not hasattr(self,'browser_store'):return
+        if self.current.get('local_download'):
+            self.player_neighbors={'previous':None,'next':None};self.paint_player_neighbors();self.player_browser.hide();return
         if self.current.get('demo'):return
         if self.current.get('radio'):self.refresh_radio_player(focus);return
         identity=self.current['id']
@@ -1617,6 +1646,7 @@ class App(RadioMixin,Gtk.Application):
         if not hasattr(self,'now_playing_title'):return
         self.now_playing_title.set_text(channel['name']);self.now_playing_title.set_tooltip_text(channel['name'])
         radio=bool(channel.get('radio'))
+        local=bool(channel.get('local_download'))
         if hasattr(self,'browser_filter_hint'):self.browser_filter_hint.set_visible(radio)
         for widget in getattr(self,'player_seek_buttons',[]):
             widget.set_no_show_all(radio);widget.set_visible(not radio)
@@ -1627,11 +1657,13 @@ class App(RadioMixin,Gtk.Application):
             self.radio_stage_title.set_text(channel['name'])
             self.radio_stage_meta.set_text(' · '.join(filter(None,[channel.get('country',''),' / '.join(channel.get('tags',[])[:3])])))
             self.radio_song.set_text('Radio en direct')
+            if hasattr(self,'video_stack'):self.video_stack.set_visible_child_name('radio' if radio else 'video')
         kind=channel['kind'];live=kind=='live'
-        self.player_kind.set_text('● RADIO' if radio else '● DIRECT' if live else 'SÉRIE' if kind in ('episode','series') else 'FILM')
+        self.player_kind.set_text('FICHIER LOCAL' if local else '● RADIO' if radio else '● DIRECT' if live else 'SÉRIE' if kind in ('episode','series') else 'FILM')
         context=self.player_kind.get_style_context()
         context.add_class('on-air') if live else context.remove_class('on-air')
         if hasattr(self,'player_browse_button'):
+            self.player_browse_button.set_sensitive(not local)
             title='Stations' if radio else 'Épisodes' if kind=='episode' else 'Chaînes' if live else 'Séries' if kind=='series' else 'Films'
             self.player_browse_button.get_child().get_children()[1].set_text(title)
             description='Afficher ou masquer les '+title.lower()
@@ -1745,7 +1777,7 @@ class App(RadioMixin,Gtk.Application):
             elif self.media_loaded:local_position=self.position
             elif self.current['kind']!='live':local_position=self.current.get('position',self.position)
         self.save_position()
-        if not channel.get('demo') and not channel.get('radio'):
+        if not channel.get('demo') and not channel.get('radio') and not channel.get('local_download'):
             channel=self.library.channel(channel['id'])
             if channel is None:self.notify('Ce contenu a été retiré de la source.',True);return
         if channel['kind']=='series' and channel['url'].startswith('xtream-series:'):
@@ -1770,6 +1802,29 @@ class App(RadioMixin,Gtk.Application):
         self.open_current_stream()
 
     def open_current_stream(self):
+        if not self.current or self.closing:return
+        if hasattr(self,'view_stack'):
+            self.cancel_stream_start();generation=self.stream_generation
+            self.accepting_load=False;started=time.monotonic()
+            def ready():
+                if self.closing or generation!=self.stream_generation or not self.current:
+                    self.stream_start_timer=None;return False
+                target=self.video_stack if self.current.get('radio') else self.video
+                visible_window=not hasattr(self,'window') or self.window.get_mapped()
+                if self.view=='player' and visible_window and (not target.get_mapped() or target.get_allocated_width()<2 or target.get_allocated_height()<2):
+                    if time.monotonic()-started<3:return True
+                    self.stream_start_timer=None;self.accepting_load=True
+                    self.handle_playback_failure('La surface du lecteur ne s’est pas affichée. Réessayez.');return False
+                self.stream_start_timer=None;self.load_current_stream();return False
+            self.stream_start_timer=GLib.timeout_add(16,ready)
+            return
+        self.load_current_stream()
+
+    def cancel_stream_start(self):
+        self.stream_generation+=1
+        if self.stream_start_timer:GLib.source_remove(self.stream_start_timer);self.stream_start_timer=None
+
+    def load_current_stream(self):
         if not self.current or self.closing:return
         self.accepting_load=True;self.media_loaded=False;self.load_deadline=time.monotonic()+25
         try:
@@ -1844,7 +1899,7 @@ class App(RadioMixin,Gtk.Application):
         if not channel.get('demo') and channel['kind']!='live':
             self.writes.submit(lambda library:library.finish_media(channel['id']),self.changed)
         self.player_status.set_text('Lecture terminée.')
-        if self.autoplay and not self.resume_prompt_open and self.view=='player' and channel['kind']=='episode' and not self.recording:
+        if self.autoplay and not self.resume_prompt_open and self.view=='player' and channel['kind']=='episode' and not channel.get('local_download') and not self.recording:
             following=self.library.next_episode(channel['id'])
             if following:self.next_episode.schedule(following)
         self.update_playback_banners()
@@ -1853,7 +1908,8 @@ class App(RadioMixin,Gtk.Application):
         channel=self.current
         if not self.stop_playback(destination=None):return
         if channel is None:self.navigate('home');return
-        if channel.get('radio'):self.navigate('radio')
+        if channel.get('local_download'):self.navigate('downloads')
+        elif channel.get('radio'):self.navigate('radio')
         elif channel['kind']=='live':self.navigate('live')
         elif channel['kind']=='episode':
             parent=self.library.channel(channel.get('parent_id')) if channel.get('parent_id') else None
@@ -1875,7 +1931,7 @@ class App(RadioMixin,Gtk.Application):
     def stop_playback(self,destination='home'):
         if self.recording:
             self.notify('Arrêtez l’enregistrement avant de fermer le contenu.',True);return False
-        self.save_position();self.reconnect.cancel();self.cancel_next()
+        self.cancel_stream_start();self.save_position();self.reconnect.cancel();self.cancel_next()
         self.accepting_load=False;self.media_loaded=False;self.resume_target=None;self.load_deadline=None
         if self.player:
             try:self.player.command('stop')
@@ -1946,6 +2002,7 @@ class App(RadioMixin,Gtk.Application):
         self.player_activity()
         self.fullscreen=not self.fullscreen
         self.sidebar.set_visible(not self.fullscreen and self.view!='player'); self.bottom.set_visible(not self.fullscreen and self.view!='player')
+        if hasattr(self,'sidebar_scroll'):self.sidebar_scroll.set_visible(not self.fullscreen and self.view!='player')
         self.header.set_visible(not self.fullscreen and self.view!='player')
         if hasattr(self,'fullscreen_image'):
             self.fullscreen_image.set_from_pixbuf(icon('fullscreen-exit' if self.fullscreen else 'fullscreen').get_pixbuf())
@@ -2090,6 +2147,9 @@ class App(RadioMixin,Gtk.Application):
     def close(self, *_):
         if self.closing: return False
         self.closing=True
+        self.cancel_stream_start()
+        if self.download_timer:GLib.source_remove(self.download_timer);self.download_timer=None
+        if self.download_manager:self.download_manager.close()
         if self.category_width_timer:
             GLib.source_remove(self.category_width_timer);self.save_category_width()
         if self.browser_width_timer:

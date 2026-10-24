@@ -1,5 +1,14 @@
 # Historique
 
+## 1.2.0
+
+- Téléchargement d’un film depuis sa fiche, d’un épisode depuis sa liste, ou d’une saison complète après sélection.
+- Rubrique Téléchargements : choix du dossier, file séquentielle, progression, pause / reprise, annulation et lecture locale intégrée.
+- Reprise HTTP avec validation des plages et des ETag forts, fichiers partiels séparés, absence d’écrasement des fichiers existants et historique privé.
+- HLS / DASH enregistrés en Matroska avec FFmpeg, sans réencodage vidéo ; ces flux recommencent depuis le début après une pause.
+- Catalogue, vidéo et écran Radio placés dans des vues exclusives sans animation ; attente de la zone vidéo avant démarrage et annulation des lancements dépassés.
+- Navigation latérale défilante lorsque l’écran est trop petit pour afficher tous les menus.
+
 ## 1.1.1
 
 - Retrait des totaux mondiaux de genres dans le lecteur radio : ils ne representaient pas les stations disponibles pour le pays et les filtres selectionnes.
