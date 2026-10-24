@@ -2,6 +2,12 @@
 import time
 
 
+def browser_category_caption(group,radio=False):
+    name=group['group_name'] or 'Sans catégorie'
+    # Radio Browser facet counts are worldwide, not this filtered selection.
+    return name if radio else f'{name} ({group["count"]})'
+
+
 def browser_layout(width,preferred=310):
     """Keep 640 px for video; a narrow window initially folds the browser."""
     return width<1120,max(240,min(460,int(preferred),max(240,width-646)))

@@ -4,7 +4,7 @@ import gi
 gi.require_version('Gtk','3.0')
 from gi.repository import Gtk,GLib
 from .jobs import LatestTask
-from .radio import RadioDirectory,PAGE_SIZE,favorite_rows,stations
+from .radio import RadioDirectory,PAGE_SIZE,favorite_rows,stations,filter_summary
 from .visuals import icon
 
 
@@ -94,16 +94,21 @@ class RadioMixin:
         favorites.connect('toggled',favorite_filter);tools.pack_start(favorites,False,False,0)
         tools.pack_start(button('Actualiser',self.refresh_radio,'small',symbol='refresh'),False,False,0)
         self.content.pack_start(tools,False,False,0)
+        request=self.radio_query()
+        summary=label(filter_summary(request,self.radio_countries,self.radio_favorites_only),'muted',True)
+        self.content.pack_start(summary,False,False,0)
         self.radio_result_area=box(True,12);area=self.radio_result_area
         area.pack_start(label('Recherche des stations…','muted'),False,False,0)
         self.content.pack_start(area,True,True,0);self.content.show_all()
-        request=self.radio_query()
         def done(data):
             if self.closing or self.view!='radio' or generation!=self.render_generation:return
             clear(area);self.radio_rows=data['rows']
             if data['stale']:area.pack_start(label('Hors ligne · résultats en cache. Les flux nécessitent une connexion.','muted',True),False,False,0)
             if not data['rows']:
-                area.pack_start(label('Aucune radio dans cette sélection.','section-title'),False,False,0)
+                title='Aucune station compatible sur cette page.' if data['has_next'] or self.page>0 else 'Aucune radio ne correspond à ces filtres.'
+                area.pack_start(label(title,'section-title'),False,False,0)
+                if request['country']:area.pack_start(button('Chercher dans tous les pays',self.clear_radio_country,'small'),False,False,0)
+                if request['tag']:area.pack_start(button('Afficher tous les genres',lambda:self.change_group(None),'small'),False,False,0)
                 area.pack_start(button('Afficher toutes les radios',self.reset_radio,'ghost',symbol='radio'),False,False,0)
             flow=Gtk.FlowBox();flow.set_selection_mode(Gtk.SelectionMode.NONE);flow.set_activate_on_single_click(False)
             flow.set_min_children_per_line(1);flow.set_max_children_per_line(3);flow.set_column_spacing(14);flow.set_row_spacing(14)
@@ -118,7 +123,7 @@ class RadioMixin:
             paging=box(spacing=12)
             previous=button('Précédent',lambda:self.radio_page(-1),'small',symbol='back');previous.set_sensitive(self.page>0)
             following=button('Suivant',lambda:self.radio_page(1),'small',symbol='arrow');following.set_sensitive(data['has_next'])
-            paging.pack_start(previous,False,False,0);paging.pack_start(label(f'Page {self.page+1} · {len(data["rows"])} stations','muted'),True,True,0)
+            paging.pack_start(previous,False,False,0);paging.pack_start(label(f'{len(data["rows"])} stations affichées · Page {self.page+1}','muted'),True,True,0)
             paging.pack_start(following,False,False,0);area.pack_start(paging,False,False,0);area.show_all()
         def failed(_):
             if self.closing or self.view!='radio' or generation!=self.render_generation:return
@@ -147,6 +152,10 @@ class RadioMixin:
 
     def radio_page(self,delta):self.page=max(0,self.page+delta);self.render()
 
+    def clear_radio_country(self):
+        self.radio_country='';self.page=0
+        self.persist_setting('radio_country','');self.render()
+
     def refresh_radio(self):
         from .app import clear
         self.radio_facets_ready=False;self.render_generation+=1;clear(self.content);self.render_radio(refresh=True)
@@ -172,12 +181,15 @@ class RadioMixin:
         self.paint_player_neighbors()
         if not self.player_browser_visible():return
         request=dict(text=self.browser_query,country=self.radio_country,tag=self.browser_group or '',order=self.radio_order,page=self.browser_page)
+        if hasattr(self,'browser_filter_hint'):
+            self.browser_filter_hint.set_text(filter_summary(request,self.radio_countries,self.radio_favorites_only))
+            self.browser_filter_hint.set_visible(True)
         self.browser_status.set_text('Recherche des stations…')
         def done(data):
             if self.closing or self.view!='player' or not self.current or self.current['id']!=identity:return
             count=self.browser_page*PAGE_SIZE+len(data['rows'])+int(data['has_next'])
             self.paint_player_browser(dict(rows=data['rows'],groups=self.radio_groups,parent=None,total=count,page=self.browser_page),focus)
-            self.browser_status.set_text(f'{len(data["rows"])} stations'+(' · cache hors ligne' if data['stale'] else ''))
+            self.browser_status.set_text(f'{len(data["rows"])} stations affichées sur cette page'+(' · cache hors ligne' if data['stale'] else ''))
             self.browser_page_label.set_text(f'Page {self.browser_page+1}')
             self.browser_next.set_sensitive(data['has_next'])
         def failed(_):

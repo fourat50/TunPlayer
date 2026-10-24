@@ -1,5 +1,12 @@
 # Historique
 
+## 1.1.1
+
+- Retrait des totaux mondiaux de genres dans le lecteur radio : ils ne representaient pas les stations disponibles pour le pays et les filtres selectionnes.
+- Pays, genre, recherche et filtre Mes radios affiches explicitement dans l’annuaire et dans le lecteur.
+- Nombre de stations indique comme celui de la page courante ; messages de liste vide adaptes a la pagination.
+- Possibilite d’elargir une recherche vide a tous les pays ou a tous les genres sans effacer les autres filtres.
+
 ## 1.1.0
 
 - Nouvelle rubrique Radio dans Votre espace, alimentée par Radio Browser, l’API publique utilisée par OpenRadio.

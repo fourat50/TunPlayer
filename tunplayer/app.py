@@ -23,7 +23,7 @@ from .visuals import MediaArt, icon
 from .artwork import ArtworkLoader
 from .jobs import LatestTask, CatalogReader, WriteQueue
 from .catalog import fold
-from .playback_ui import ASPECT_MODES, PlaybackIdle,browser_layout,offers_resume,escape_action
+from .playback_ui import ASPECT_MODES, PlaybackIdle,browser_layout,offers_resume,escape_action,browser_category_caption
 from .playback_flow import ReconnectPolicy, NextEpisodeCountdown, remote_stream
 from .navigation import NavigationMemory
 from .player_catalog import PlayerCatalog
@@ -1364,6 +1364,8 @@ class App(RadioMixin,Gtk.Application):
         self.browser_search.set_tooltip_text('Rechercher dans le lecteur · Ctrl + K')
         self.browser_search.connect('search-changed',self.player_browser_search_changed)
         panel.pack_start(self.browser_search,False,False,0)
+        self.browser_filter_hint=label('','muted',True);self.browser_filter_hint.set_max_width_chars(30)
+        self.browser_filter_hint.set_no_show_all(True);panel.pack_start(self.browser_filter_hint,False,False,0)
         self.browser_status=label('Choisissez un contenu.','muted',True);panel.pack_start(self.browser_status,False,False,0)
         self.browser_store=Gtk.ListStore(str,str,str)
         self.browser_tree=Gtk.TreeView(model=self.browser_store);self.browser_tree.set_headers_visible(False)
@@ -1503,12 +1505,13 @@ class App(RadioMixin,Gtk.Application):
     def paint_player_browser(self,data,focus=False):
         self.browser_updating=True
         try:
+            if hasattr(self,'browser_filter_hint'):self.browser_filter_hint.set_visible(self.browser_kind=='radio')
             signature=(self.browser_kind,self.browser_source,tuple((g['group_name'],g['count']) for g in data['groups']))
             if signature!=self.browser_group_signature:
                 self.browser_group_signature=signature;self.browser_categories.remove_all()
                 self.browser_groups=[None]+[g['group_name'] for g in data['groups']]
                 self.browser_categories.append_text('Toutes les catégories')
-                for group in data['groups']:self.browser_categories.append_text(f'{group["group_name"] or "Sans catégorie"} ({group["count"]})')
+                for group in data['groups']:self.browser_categories.append_text(browser_category_caption(group,self.browser_kind=='radio'))
             self.browser_categories.set_active(self.browser_groups.index(self.browser_group) if self.browser_group in self.browser_groups else 0)
             parent=data['parent'];self.browser_parent.set_visible(parent is not None)
             self.browser_current_name.set_text('En cours : '+self.current['name'])
@@ -1614,6 +1617,7 @@ class App(RadioMixin,Gtk.Application):
         if not hasattr(self,'now_playing_title'):return
         self.now_playing_title.set_text(channel['name']);self.now_playing_title.set_tooltip_text(channel['name'])
         radio=bool(channel.get('radio'))
+        if hasattr(self,'browser_filter_hint'):self.browser_filter_hint.set_visible(radio)
         for widget in getattr(self,'player_seek_buttons',[]):
             widget.set_no_show_all(radio);widget.set_visible(not radio)
         if hasattr(self,'player_format_box'):

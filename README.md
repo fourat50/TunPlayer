@@ -2,7 +2,7 @@
 
 Lecteur IPTV de bureau, développé d’abord pour Linux. Interface française graphite et citron vert, panorama vectoriel original, cartes illustrées et bibliothèque locale. Projet inspiré des usages d’[UHF](https://getuhf.com/), avec une identité et une implémentation propres.
 
-**Version 1.1.0 : annuaire Radio intégré, pays et catégories, favoris locaux et lecteur audio. Le lecteur IPTV et la distribution autonome Linux sont conservés.**
+**Version 1.1.1 : filtres Radio explicites et compteurs de genres corrigés. Pays et catégories, favoris locaux, lecteur audio et distribution autonome Linux.**
 
 ## Démarrer sous Linux
 
@@ -130,9 +130,16 @@ sont complétées après vérification des téléchargements.
 Ouvrez **Radio** dans **Votre espace**. Aucun import de playlist ni compte
 n’est nécessaire. Sélectionnez un **pays** dans la colonne latérale et un
 **genre** dans les catégories ; les deux filtres se combinent. La recherche
-du haut porte sur le nom des stations. Les tris proposent popularité, nom
-et pays, avec des pages de 40 résultats. Les catégories sont les tags libres
+du haut porte sur le nom des stations. Un rappel indique les filtres actifs,
+y compris « Mes radios » lorsqu’il est sélectionné. Les tris proposent popularité, nom
+et pays, avec des pages de 40 résultats. Le nombre de stations affiché concerne
+la page courante. Les catégories sont les tags libres
 de l’annuaire, avec les 150 genres les plus représentés.
+
+Les compteurs globaux de genres ne sont pas affichés : ils ne représentent
+pas le résultat d’un filtre combinant pays, genre, recherche et favoris.
+« Indie » est un genre musical. Une sélection vide peut être élargie à tous
+les pays ou à tous les genres sans effacer les autres critères.
 
 **Écouter** ouvre le lecteur intégré en mode audio, avec le nom, le pays et
 les genres de la station. Les commandes restent visibles. **Stations** ouvre

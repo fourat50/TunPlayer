@@ -44,6 +44,11 @@ class RadioPlayback(unittest.TestCase):
         self.app.radio_favorites={};self.app.init_radio()
         self.assertIn(row['id'],self.app.radio_favorites)
 
+    def test_expanding_country_keeps_the_selected_genre_and_search(self):
+        self.app.radio_country='TN';self.app.group='indie';self.app.query='radio';self.app.page=4
+        self.app.clear_radio_country()
+        self.assertEqual(self.app.radio_query(),dict(country='',tag='indie',text='radio',order='popular',page=0))
+
     def test_switching_back_to_video_restores_the_video_track(self):
         media=str(Path(__file__).resolve().parents[1]/'assets/demo.mp4')
         row=dict(self.radio(),url=media);engine=Player(headless=True);self.app.player=engine

@@ -6,7 +6,8 @@ import threading
 import unittest
 from urllib.parse import urlsplit,parse_qs
 from unittest.mock import patch
-from tunplayer.radio import RadioDirectory,RadioError,stations,favorite_rows,MAX_BYTES
+from tunplayer.radio import RadioDirectory,RadioError,stations,favorite_rows,MAX_BYTES,filter_summary
+from tunplayer.playback_ui import browser_category_caption
 
 
 def station(name='Jazz Tunis',identity='01234567-89ab-cdef-0123-456789abcdef',**extra):
@@ -83,3 +84,21 @@ class RadioDirectoryTests(unittest.TestCase):
         row=stations([station()])[0];favorites={row['id']:row}
         self.assertEqual(favorite_rows(favorites,dict(country='TN',tag='jazz',text='jazz'))['rows'],[row])
         self.assertEqual(favorite_rows(favorites,dict(country='FR'))['rows'],[])
+
+    def test_worldwide_indie_count_is_not_presented_as_a_filtered_radio_count(self):
+        group=dict(group_name='indie',count=454)
+        self.assertEqual(browser_category_caption(group,radio=True),'indie')
+        self.assertEqual(browser_category_caption(group,radio=False),'indie (454)')
+
+    def test_filter_summary_explains_the_country_genre_and_favorite_intersection(self):
+        summary=filter_summary(dict(country='TN',tag='indie',text='Tunis'),[dict(code='TN',name='Tunisia')],True)
+        self.assertIn('Pays : Tunisia',summary);self.assertIn('Genre : indie',summary)
+        self.assertIn('Recherche : « Tunis »',summary);self.assertIn('Mes radios uniquement',summary)
+
+    def test_global_genre_can_have_stations_while_a_country_intersection_is_empty(self):
+        def response(request,timeout):
+            query=parse_qs(urlsplit(request.full_url).query)
+            return io.BytesIO(json.dumps([] if query.get('countrycode')==['TN'] else [station()]).encode())
+        with patch.object(self.directory,'opener',side_effect=response):
+            self.assertEqual(self.directory.search(dict(country='TN',tag='indie'),self.cancel)['rows'],[])
+            self.assertEqual(len(self.directory.search(dict(tag='indie'),self.cancel)['rows']),1)

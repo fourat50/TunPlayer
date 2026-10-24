@@ -21,6 +21,15 @@ MAX_BYTES=4*1024*1024
 class RadioError(ValueError):pass
 
 
+def filter_summary(query,countries=(),favorites=False):
+    code=query.get('country','')
+    country=next((row['name'] for row in countries if row['code']==code),code) if code else 'Tous les pays'
+    parts=['Pays : '+country,'Genre : '+(query.get('tag') or 'Toutes les catégories')]
+    if query.get('text'):parts.append('Recherche : « '+query['text'][:200]+' »')
+    if favorites:parts.append('Mes radios uniquement')
+    return ' · '.join(parts)
+
+
 def web_url(value):
     if not isinstance(value,str):return ''
     value=value.strip()
