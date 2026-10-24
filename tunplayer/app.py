@@ -27,6 +27,7 @@ from .playback_ui import ASPECT_MODES, PlaybackIdle,browser_layout,offers_resume
 from .playback_flow import ReconnectPolicy, NextEpisodeCountdown, remote_stream
 from .navigation import NavigationMemory
 from .player_catalog import PlayerCatalog
+from .radio_ui import RadioMixin
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -73,7 +74,7 @@ def navigation(text, symbol, callback):
     w.get_accessible().set_name(text)
     return w
 
-class App(Gtk.Application):
+class App(RadioMixin,Gtk.Application):
     def __init__(self, args):
         super().__init__(application_id='tn.tunplayer.desktop', flags=Gio.ApplicationFlags.NON_UNIQUE if args.data_dir else Gio.ApplicationFlags.FLAGS_NONE)
         self.args = args
@@ -127,6 +128,7 @@ class App(Gtk.Application):
         self.last_pointer=None;self.pointer_inside=False
         self.position = 0.; self.duration = 0.; self.seeking = False; self.tick_count = 0
         self.media_loaded = False; self.resume_target = None; self.resume_deadline = 0
+        self.init_radio()
         self.connect('activate',self.activate)
 
     def write_error(self,_):
@@ -170,7 +172,7 @@ class App(Gtk.Application):
         self.sidebar_toggle=button('',self.toggle_sidebar,'icon-button',symbol='back',tooltip='Réduire ou agrandir Votre espace')
         section.pack_start(self.sidebar_toggle,False,False,0);self.sidebar.pack_start(section,False,False,2)
         self.nav = {}
-        for view,text,symbol in [('home','Découvrir','home'),('live','Télévision','live'),('movie','Films','movie'),('series','Séries','series'),('guide','Guide TV','guide'),('favorites','Favoris','heart'),('history','Historique','history')]:
+        for view,text,symbol in [('home','Découvrir','home'),('live','Télévision','live'),('radio','Radio','radio'),('movie','Films','movie'),('series','Séries','series'),('guide','Guide TV','guide'),('favorites','Favoris','heart'),('history','Historique','history')]:
             b = navigation(text,symbol,lambda v=view:self.navigate(v))
             self.sidebar.pack_start(b,False,False,0); self.nav[view]=b
         self.sidebar.pack_start(Gtk.Separator(),False,False,18)
@@ -226,6 +228,7 @@ class App(Gtk.Application):
         self.category_tree.get_selection().connect('changed',self.category_selected)
         category_scroll=Gtk.ScrolledWindow();category_scroll.set_policy(Gtk.PolicyType.NEVER,Gtk.PolicyType.AUTOMATIC)
         category_scroll.add(self.category_tree);self.category_panel.pack_start(category_scroll,True,True,0)
+        self.build_radio_country()
         self.workspace.pack1(self.category_panel,resize=False,shrink=False)
         self.content = box(True,22,'content'); self.scroll.add(self.content)
         self.workspace.pack2(self.scroll,resize=True,shrink=True)
@@ -238,7 +241,23 @@ class App(Gtk.Application):
         self.video = Gtk.DrawingArea(); self.video.set_size_request(640,320); self.video.set_hexpand(True); self.video.set_vexpand(True)
         self.video.set_has_window(True)
         self.video.set_can_focus(True)
-        stage.pack1(self.video,resize=True,shrink=False)
+        video_overlay=Gtk.Overlay();video_overlay.add(self.video)
+        self.radio_stage=box(True,18,'radio-stage');self.radio_stage.set_halign(Gtk.Align.FILL);self.radio_stage.set_valign(Gtk.Align.FILL)
+        self.radio_stage.pack_start(space(),True,True,0)
+        radio_mark=icon('radio',80,'#c4f478');radio_mark.set_halign(Gtk.Align.CENTER)
+        self.radio_stage.pack_start(radio_mark,False,False,0)
+        self.radio_stage_title=label('Radio','radio-stage-title',True);self.radio_stage_title.set_xalign(.5)
+        self.radio_stage_title.set_max_width_chars(36);self.radio_stage_title.set_ellipsize(3)
+        self.radio_stage.pack_start(self.radio_stage_title,False,False,0)
+        self.radio_stage_meta=label('','muted',True);self.radio_stage_meta.set_xalign(.5)
+        self.radio_stage_meta.set_max_width_chars(60);self.radio_stage_meta.set_ellipsize(3)
+        self.radio_stage.pack_start(self.radio_stage_meta,False,False,0)
+        self.radio_song=label('En direct','channel-name',True);self.radio_song.set_xalign(.5)
+        self.radio_stage.pack_start(self.radio_song,False,False,0)
+        browse_radio=button('Parcourir les radios',lambda:self.navigate('radio'),'ghost',symbol='radio');browse_radio.set_halign(Gtk.Align.CENTER)
+        self.radio_stage.pack_start(browse_radio,False,False,0);self.radio_stage.pack_start(space(),True,True,0)
+        self.radio_stage.show_all();self.radio_stage.set_no_show_all(True);self.radio_stage.hide()
+        video_overlay.add_overlay(self.radio_stage);stage.pack1(video_overlay,resize=True,shrink=False)
         self.player_browser=self.build_player_browser();stage.pack2(self.player_browser,resize=False,shrink=False)
         stage.connect('size-allocate',self.resize_player_browser)
         stage.connect('notify::position',self.player_browser_width_changed)
@@ -308,6 +327,7 @@ class App(Gtk.Application):
         transport.pack_start(button('10',lambda:self.command('seek',10),'player-seek',symbol='forward',tooltip='Avancer de 10 secondes · flèche droite'),False,False,0)
         transport.pack_start(button('',self.back_from_playback,'player-tool',symbol='stop',
             tooltip='Arrêter la lecture et revenir aux chaînes, aux épisodes ou à la fiche du film'),False,False,0)
+        self.player_seek_buttons=[transport.get_children()[0],transport.get_children()[2]]
         tools=box(spacing=8,css='player-tools');tools.set_halign(Gtk.Align.END)
         controls.attach(self.player_next_button,2,0,1,1)
         tools.pack_start(volume,False,False,0);info.pack_start(tools,False,False,0)
@@ -321,7 +341,7 @@ class App(Gtk.Application):
         self.player_settings.set_no_show_all(True)
         settings=box(True,14,css='player-settings-content');settings.set_size_request(260,-1)
         settings.pack_start(label('Réglages de lecture','settings-title'),False,False,0)
-        image_format=box(True,7)
+        image_format=box(True,7);self.player_format_box=image_format
         image_format.pack_start(label('FORMAT D’IMAGE','caption'),False,False,0)
         self.aspect_selector=Gtk.ComboBoxText();self.aspect_selector.get_style_context().add_class('player-aspect')
         for mode,(title,*_) in ASPECT_MODES.items():self.aspect_selector.append(mode,title)
@@ -381,7 +401,7 @@ class App(Gtk.Application):
         if view not in ('details','episodes'):
             self.detail_tasks.cancel();self.detail_loading=False
         if view!='player':self.cancel_next()
-        if self.view in ('home','live','movie','series','favorites','history'):
+        if self.view in ('home','live','movie','series','favorites','history','radio'):
             self.navigation.pages[self.view]=self.page
             self.view_filters[self.view]=(self.group,self.source_id,dict(self.filter_options),self.sort)
             self.view_queries[self.view]=self.query
@@ -394,9 +414,9 @@ class App(Gtk.Application):
             self.toggle_fullscreen()
         for name,b in self.nav.items():
             ctx=b.get_style_context(); ctx.add_class('active') if name==view else ctx.remove_class('active')
-        self.heading.set_text({'home':'Découvrir','live':'Télévision','movie':'Films','series':'Séries','episodes':'Saisons & épisodes','details':'Fiche du contenu','guide':'Guide TV','favorites':'Vos favoris','history':'Reprendre le fil','sources':'Mes sources','settings':'Préférences','player':'À l’écran'}.get(view,view))
+        self.heading.set_text({'home':'Découvrir','live':'Télévision','radio':'Radio','movie':'Films','series':'Séries','episodes':'Saisons & épisodes','details':'Fiche du contenu','guide':'Guide TV','favorites':'Vos favoris','history':'Reprendre le fil','sources':'Mes sources','settings':'Préférences','player':'À l’écran'}.get(view,view))
         self.heading_subtitle.set_text({'home':'Votre prochain bon moment.','live':'Le monde en direct, à votre rythme.',
-            'movie':'Le cinéma s’invite chez vous.','series':'Une nouvelle histoire, épisode après épisode.','episodes':'Choisissez votre prochaine séance.','guide':'Choisissez la suite de votre soirée.',
+            'radio':'Des voix et des musiques du monde entier.','movie':'Le cinéma s’invite chez vous.','series':'Une nouvelle histoire, épisode après épisode.','episodes':'Choisissez votre prochaine séance.','guide':'Choisissez la suite de votre soirée.',
             'details':'Synopsis, distribution et reprise de lecture.',
             'favorites':'Votre sélection, toujours à portée de main.','history':'Retrouvez ce que vous avez aimé.',
             'sources':'Toutes vos playlists au même endroit.','settings':'Un espace à votre image.',
@@ -407,8 +427,12 @@ class App(Gtk.Application):
         if hasattr(self,'bottom'):self.bottom.set_visible(view!='player' and not self.fullscreen)
         if hasattr(self,'sidebar'):self.sidebar.set_visible(view!='player' and not self.fullscreen)
         if view!='player' and hasattr(self,'player_settings'):self.player_settings.popdown()
-        self.category_panel.set_visible(view in ('live','movie','series','favorites','history'))
-        if view in ('live','movie','series','favorites','history') and hasattr(self.workspace,'set_position'):
+        self.category_panel.set_visible(view in ('live','movie','series','favorites','history','radio'))
+        if hasattr(self,'radio_country_box'):self.radio_country_box.set_visible(view=='radio')
+        if hasattr(self,'category_tree'):self.category_tree.get_columns()[1].set_visible(view!='radio')
+        if hasattr(self.search,'set_placeholder_text'):self.search.set_placeholder_text('Rechercher une radio…' if view=='radio' else 'Rechercher dans votre bibliothèque…')
+        if view!='radio':self.radio_tasks.cancel()
+        if view in ('live','movie','series','favorites','history','radio') and hasattr(self.workspace,'set_position'):
             self.workspace.set_position(self.category_width)
         self.return_button.set_visible(self.current is not None and view != 'player')
         if view!='player': self.render()
@@ -427,7 +451,7 @@ class App(Gtk.Application):
         self.persist_setting('sidebar_collapsed','1' if self.sidebar_collapsed else '0');self.apply_sidebar()
 
     def category_width_changed(self,paned,*_):
-        if self.closing or self.view not in ('live','movie','series','favorites','history'):return
+        if self.closing or self.view not in ('live','movie','series','favorites','history','radio'):return
         if not self.category_panel.get_visible() or not paned.get_mapped():return
         position=paned.get_position()
         if position<=0:return
@@ -484,7 +508,7 @@ class App(Gtk.Application):
         if query==self.query:return
         self.query=query
         self.page=0
-        if self.view not in ('home','live','movie','series','favorites','history','guide'):
+        if self.view not in ('home','live','movie','series','favorites','history','guide','radio'):
             self.navigate('home');self.query=query;self.search.set_text(query);self.render()
         # Gtk.SearchEntry already coalesces typing for 150 ms; do not add another delay.
         else: self.render(delay=0)
@@ -525,6 +549,7 @@ class App(Gtk.Application):
             elif self.view=='guide':self.render_guide()
             elif self.view=='episodes':self.render_series()
             elif self.view=='details':self.render_details()
+            elif self.view=='radio':self.render_radio()
             self.content.show_all();return
         self.active_catalog_request=self.catalog_request()
         cached=self.catalog_reader.lookup(self.active_catalog_request)
@@ -889,7 +914,8 @@ class App(Gtk.Application):
         return row
 
     def open_media(self,channel):
-        if not channel.get('demo') and channel['kind'] in ('movie','series'):self.open_details(channel)
+        if channel.get('radio'):self.play_radio_station(channel)
+        elif not channel.get('demo') and channel['kind'] in ('movie','series'):self.open_details(channel)
         else:self.play(channel)
 
     def open_details(self,channel):
@@ -1434,14 +1460,16 @@ class App(Gtk.Application):
         return False
 
     def configure_player_browser(self,channel):
+        radio_page=self.page if self.view=='radio' else self.browser_page if self.browser_kind=='radio' else 0
         self.player_neighbors={'previous':None,'next':None}
-        self.browser_kind='series' if channel['kind'] in ('series','episode') else channel['kind']
-        self.browser_source=channel.get('source_id');self.browser_group=channel.get('group_name')
+        self.browser_kind='radio' if channel.get('radio') else 'series' if channel['kind'] in ('series','episode') else channel['kind']
+        self.browser_source=channel.get('source_id')
+        self.browser_group=(self.group if self.view=='radio' else self.view_filters.get('radio',(None,))[0]) if channel.get('radio') else channel.get('group_name')
         self.browser_series=channel.get('parent_id') if channel['kind']=='episode' else None
         if self.browser_series:
             parent=self.library.channel(self.browser_series)
             if parent:self.browser_group=parent['group_name']
-        self.browser_query='';self.browser_page=0
+        self.browser_query='';self.browser_page=radio_page if channel.get('radio') else 0
         if hasattr(self,'browser_search'):self.browser_search.set_text('')
         self.paint_player_neighbors()
 
@@ -1458,6 +1486,7 @@ class App(Gtk.Application):
     def refresh_player_catalog(self,focus=False):
         if self.closing or self.view!='player' or not self.current or not hasattr(self,'browser_store'):return
         if self.current.get('demo'):return
+        if self.current.get('radio'):self.refresh_radio_player(focus);return
         identity=self.current['id']
         request=dict(current_id=identity,opened=self.player_browser_visible(),kind=self.browser_kind,source_id=self.browser_source,
             group=self.browser_group,series_id=self.browser_series,search=self.browser_query,page=self.browser_page,focus=focus,revision=self.data_revision)
@@ -1484,7 +1513,7 @@ class App(Gtk.Application):
             parent=data['parent'];self.browser_parent.set_visible(parent is not None)
             self.browser_current_name.set_text('En cours : '+self.current['name'])
             self.browser_current_name.set_tooltip_text(self.current['name'])
-            self.browser_parent_name.set_text(parent['name'] if parent else {'live':'Chaînes en direct','movie':'Films','series':'Séries'}[self.browser_kind])
+            self.browser_parent_name.set_text(parent['name'] if parent else {'live':'Chaînes en direct','radio':'Stations de radio','movie':'Films','series':'Séries'}[self.browser_kind])
             self.browser_search.set_placeholder_text('Rechercher un épisode…' if parent else 'Rechercher dans cette catégorie…')
             self.browser_store.clear();self.browser_rows={row['id']:row for row in data['rows']}
             for row in data['rows']:
@@ -1520,6 +1549,8 @@ class App(Gtk.Application):
     def player_browser_activate(self,tree,path,column):
         row=self.browser_rows.get(self.browser_store[path][0])
         if not row:return
+        if row.get('radio'):
+            self.radio_play_rows=list(self.browser_rows.values());self.play(row);return
         if not row['url'].startswith('xtream-series:'):self.play(row);return
         self.player_activity();self.browser_status.set_text('Chargement des épisodes…')
         config=self.library.source_config(row['source_id'])
@@ -1582,12 +1613,22 @@ class App(Gtk.Application):
     def update_player_identity(self,channel):
         if not hasattr(self,'now_playing_title'):return
         self.now_playing_title.set_text(channel['name']);self.now_playing_title.set_tooltip_text(channel['name'])
+        radio=bool(channel.get('radio'))
+        for widget in getattr(self,'player_seek_buttons',[]):
+            widget.set_no_show_all(radio);widget.set_visible(not radio)
+        if hasattr(self,'player_format_box'):
+            self.player_format_box.set_no_show_all(radio);self.player_format_box.set_visible(not radio)
+        if hasattr(self,'radio_stage'):
+            self.radio_stage.set_visible(radio)
+            self.radio_stage_title.set_text(channel['name'])
+            self.radio_stage_meta.set_text(' · '.join(filter(None,[channel.get('country',''),' / '.join(channel.get('tags',[])[:3])])))
+            self.radio_song.set_text('Radio en direct')
         kind=channel['kind'];live=kind=='live'
-        self.player_kind.set_text('● DIRECT' if live else 'SÉRIE' if kind in ('episode','series') else 'FILM')
+        self.player_kind.set_text('● RADIO' if radio else '● DIRECT' if live else 'SÉRIE' if kind in ('episode','series') else 'FILM')
         context=self.player_kind.get_style_context()
         context.add_class('on-air') if live else context.remove_class('on-air')
         if hasattr(self,'player_browse_button'):
-            title='Épisodes' if kind=='episode' else 'Chaînes' if live else 'Séries' if kind=='series' else 'Films'
+            title='Stations' if radio else 'Épisodes' if kind=='episode' else 'Chaînes' if live else 'Séries' if kind=='series' else 'Films'
             self.player_browse_button.get_child().get_children()[1].set_text(title)
             description='Afficher ou masquer les '+title.lower()
             self.player_browse_button.set_tooltip_text(description)
@@ -1661,7 +1702,7 @@ class App(Gtk.Application):
 
     def check_player_idle(self):
         if self.closing:self.idle_timer=None;return False
-        active=self.view=='player' and self.media_loaded
+        active=self.view=='player' and self.media_loaded and not (self.current and self.current.get('radio'))
         if active:self.poll_player_pointer()
         settings_open=hasattr(self,'player_settings') and self.player_settings.get_visible()
         held=active and (self.seeking or self.next_episode.pending or self.buffering_since is not None or self.resume_prompt_open or settings_open or Gtk.grab_get_current() is not None)
@@ -1700,7 +1741,7 @@ class App(Gtk.Application):
             elif self.media_loaded:local_position=self.position
             elif self.current['kind']!='live':local_position=self.current.get('position',self.position)
         self.save_position()
-        if not channel.get('demo'):
+        if not channel.get('demo') and not channel.get('radio'):
             channel=self.library.channel(channel['id'])
             if channel is None:self.notify('Ce contenu a été retiré de la source.',True);return
         if channel['kind']=='series' and channel['url'].startswith('xtream-series:'):
@@ -1720,7 +1761,7 @@ class App(Gtk.Application):
         self.completed_current=False;self.eof_handled=False;self.duration_saved=False
         self.media_loaded=False;self.resume_target=None;self.buffering_since=None
         self.navigate('player')
-        self.bottom_title.set_text(('DÉMONSTRATION LOCALE · ' if channel.get('demo') else 'À L’ÉCRAN · ')+channel['name'])
+        self.bottom_title.set_text(('RADIO · ' if channel.get('radio') else 'DÉMONSTRATION LOCALE · ' if channel.get('demo') else 'À L’ÉCRAN · ')+channel['name'])
         self.player_status.set_text('Connexion…')
         self.open_current_stream()
 
@@ -1729,6 +1770,7 @@ class App(Gtk.Application):
         self.accepting_load=True;self.media_loaded=False;self.load_deadline=time.monotonic()+25
         try:
             self.ensure_player();self.player.events()
+            self.player.set('vid','no' if self.current.get('radio') else 'auto')
             self.player.command('loadfile',self.current['url'],'replace')
             self.player.set('pause','yes' if self.user_paused else 'no')
         except (RuntimeError,OSError) as error:self.handle_playback_failure(str(error))
@@ -1807,7 +1849,8 @@ class App(Gtk.Application):
         channel=self.current
         if not self.stop_playback(destination=None):return
         if channel is None:self.navigate('home');return
-        if channel['kind']=='live':self.navigate('live')
+        if channel.get('radio'):self.navigate('radio')
+        elif channel['kind']=='live':self.navigate('live')
         elif channel['kind']=='episode':
             parent=self.library.channel(channel.get('parent_id')) if channel.get('parent_id') else None
             if parent:
@@ -1936,7 +1979,7 @@ class App(Gtk.Application):
         self.update_record_visual(False); self.notify('Finalisation de l’enregistrement…')
 
     def save_position(self):
-        if self.media_loaded and self.resume_target is None and not self.completed_current and self.current and not self.current.get('demo'):
+        if self.media_loaded and self.resume_target is None and not self.completed_current and self.current and not self.current.get('demo') and not self.current.get('radio'):
             self.mark_watched(self.current['id'],self.position)
 
     def tick(self):
@@ -1951,7 +1994,7 @@ class App(Gtk.Application):
                 if not any(item[0]=='loaded' for item in events[index+1:]):self.handle_playback_failure(message)
             elif kind=='loaded' and self.accepting_load and self.current:
                 self.media_loaded=True;self.load_deadline=None;self.reconnect.loaded()
-                if not self.current.get('demo'):self.mark_watched(self.current['id'])
+                if not self.current.get('demo') and not self.current.get('radio'):self.mark_watched(self.current['id'])
                 if self.current['kind']!='live' and self.current.get('position',0)>0:
                     self.resume_target=self.current['position'];self.resume_deadline=time.monotonic()+5
                     self.command('seek',self.resume_target,'absolute')
@@ -1988,7 +2031,7 @@ class App(Gtk.Application):
             except RuntimeError:pass
             self.handle_playback_failure('Le délai de connexion est dépassé.')
         if self.reconnect.take_due():
-            fresh=self.library.channel(self.current['id']) if self.current and not self.current.get('demo') else self.current
+            fresh=self.library.channel(self.current['id']) if self.current and not self.current.get('demo') and not self.current.get('radio') else self.current
             if fresh:
                 fresh['position']=self.current.get('position',0);self.current=fresh;self.open_current_stream()
             else:self.cancel_reconnect()
@@ -1997,7 +2040,9 @@ class App(Gtk.Application):
             self.play(following,resume='auto');return True
         if not self.seeking:
             self.timeline.set_range(0,max(self.duration,1));self.timeline.set_value(self.position)
-        self.timeline.set_sensitive(self.duration>0)
+        self.timeline.set_sensitive(self.duration>0 and not (self.current and self.current.get('radio')))
+        if self.current and self.current.get('radio') and hasattr(self,'radio_song'):
+            self.radio_song.set_text(self.player.get('metadata/by-key/icy-title') or 'Radio en direct')
         self.time_label.set_text(f'{clock(self.position)} / {clock(self.duration)}' if self.duration else
             '● DIRECT' if self.current and self.current['kind']=='live' else 'Durée indisponible')
         self.update_pause_visual(paused)
@@ -2049,6 +2094,7 @@ class App(Gtk.Application):
         self.save_position(); self.stop_record()
         self.reconnect.cancel();self.cancel_next();self.accepting_load=False
         self.catalog_tasks.close();self.detail_tasks.close()
+        self.radio_tasks.close();self.radio_facets_tasks.close()
         if self.render_timer:GLib.source_remove(self.render_timer);self.render_timer=None
         if self.paint_timer:GLib.source_remove(self.paint_timer);self.paint_timer=None
         if self.catalog_restore_timer:GLib.source_remove(self.catalog_restore_timer);self.catalog_restore_timer=None

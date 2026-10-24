@@ -2,7 +2,7 @@
 
 Lecteur IPTV de bureau, développé d’abord pour Linux. Interface française graphite et citron vert, panorama vectoriel original, cartes illustrées et bibliothèque locale. Projet inspiré des usages d’[UHF](https://getuhf.com/), avec une identité et une implémentation propres.
 
-**Version 0.6.1 : vidéo agrandie quand les commandes se masquent, commandes compactes, panneau adaptable, choix de reprise et navigation clavier harmonisée. La parité complète avec UHF et le portage Windows ne sont pas terminés.**
+**Version 1.1.0 : annuaire Radio intégré, pays et catégories, favoris locaux et lecteur audio. Le lecteur IPTV et la distribution autonome Linux sont conservés.**
 
 ## Démarrer sous Linux
 
@@ -124,6 +124,42 @@ GitHub au programme embarqué, pousse `main`, ajoute les deux fichiers avec
 leurs empreintes et instructions, puis télécharge les fichiers publiés pour
 les comparer. Les fichiers existants ne sont pas écrasés. Les notes de release
 sont complétées après vérification des téléchargements.
+
+## Radio : pays et catégories
+
+Ouvrez **Radio** dans **Votre espace**. Aucun import de playlist ni compte
+n’est nécessaire. Sélectionnez un **pays** dans la colonne latérale et un
+**genre** dans les catégories ; les deux filtres se combinent. La recherche
+du haut porte sur le nom des stations. Les tris proposent popularité, nom
+et pays, avec des pages de 40 résultats. Les catégories sont les tags libres
+de l’annuaire, avec les 150 genres les plus représentés.
+
+**Écouter** ouvre le lecteur intégré en mode audio, avec le nom, le pays et
+les genres de la station. Les commandes restent visibles. **Stations** ouvre
+la liste pendant la lecture ; Précédent / Suivant parcourent la sélection
+chargée. **Parcourir les radios** revient à l’annuaire en laissant l’audio
+continuer ; Retour et Stop coupent le flux et reviennent à Radio.
+
+Le cœur ajoute la station à **Mes radios**, une sélection locale séparée
+des favoris IPTV. Elle reste consultable sans annuaire disponible. Les pages
+déjà consultées peuvent aussi être affichées depuis le cache en cas de
+coupure, avec une indication explicite. L’écoute des flux nécessite Internet.
+Les logos non disponibles utilisent un visuel de remplacement.
+
+OpenRadio est une application utilisant **Radio Browser**, comme l’indiquent
+son [README](https://github.com/raj-khan/openradio) et son
+[fournisseur de stations](https://github.com/raj-khan/openradio/blob/main/lib/stations/radio-browser-provider.ts).
+TunPlayer intègre directement cette même API publique, sans héberger OpenRadio
+ni reprendre son interface. Les appels suivent la [documentation Radio Browser](https://docs.radio-browser.info/).
+Les pays, tags et recherches sont chargés hors du fil GTK, avec délais bornés,
+miroirs HTTPS et cache disque limité à 48 réponses. Les stations marquées en
+échec, les URL non HTTP(S) et les doublons d’une page sont écartés.
+
+Cette fonctionnalité appartient aux sources **1.1.0**. Les paquets de la
+release 1.0.0 ne la contiennent pas. Pour construire le programme courant,
+utilisez `--ref HEAD` avec les scripts de construction, après avoir commité
+les sources. Les scripts de publication de la release 1.0.0 restent réservés
+à cette ancienne version.
 
 ## Interface
 

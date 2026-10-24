@@ -207,3 +207,9 @@ checkbutton:disabled { opacity: 0.4; }
 .playback-notice { background: #273824; border: 1px solid #4b6435; border-radius: 8px; margin: 6px 16px; padding: 6px 12px; }
 .playback-notice .muted { color: #e0efcc; }
 .episode-progress { color: #c7e5a4; font-size: 11px; }
+/* Radio directory and an audio-focused player surface. */
+.radio-intro { padding: 20px 24px; border-radius: 16px; background: #202820; border: 1px solid #35452b; }
+.radio-card { padding: 18px; border-radius: 14px; background: #1a2029; border: 1px solid #303a47; }
+.radio-card:hover { border-color: #8eae62; background: #202a32; }
+.radio-stage { background: #141d22; padding: 32px; }
+.radio-stage-title { font-size: 32px; font-weight: bold; color: #f0f4ea; }

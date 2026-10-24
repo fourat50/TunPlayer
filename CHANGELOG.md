@@ -1,5 +1,14 @@
 # Historique
 
+## 1.1.0
+
+- Nouvelle rubrique Radio dans Votre espace, alimentée par Radio Browser, l’API publique utilisée par OpenRadio.
+- Pays et catégories combinables, recherche de station, tri par popularité / nom / pays et pagination de 40 résultats.
+- Logos, débit et codec, favoris locaux « Mes radios », cache des recherches et des pays / genres avec consultation hors ligne des résultats déjà visités.
+- Requêtes en arrière-plan, réponses dépassées ignorées, miroirs HTTPS et réessai sans bloquer GTK.
+- Écran audio intégré, commandes toujours visibles, stations précédente / suivante, liste des stations pendant l’écoute, arrêt et retour vers Radio.
+- Les radios sont séparées des playlists et de l’historique IPTV. Aucun compte ni clé API supplémentaire.
+
 ## 1.0.0
 
 - Distribution Linux : paquet `.deb` construit depuis le tag fige, lanceur et icone standards, dependances APT et SHA256.
