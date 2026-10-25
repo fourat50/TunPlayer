@@ -1,5 +1,12 @@
 # Historique
 
+## 1.5.2
+
+- Correction de l’icône « search » manquante : elle provoquait une exception pendant la création de la fenêtre de résultats, juste après la fermeture du dialogue audio.
+- Recherche lancée automatiquement à l’ouverture de la fenêtre, avec le titre, la saison / épisode et la langue déjà sélectionnés ; filtres toujours modifiables.
+- Décodage réel des icônes dans les tests des dialogues, contrôle des références du code et vérification des ressources SVG dans le paquet autonome.
+- Tests du parcours film et épisode depuis le dialogue audio jusqu’à la sélection, au téléchargement d’une archive et à l’activation du sous-titre dans le vrai moteur mpv.
+
 ## 1.5.1
 
 - Source SubDL activée immédiatement lorsqu’une clé est ajoutée depuis une fenêtre de recherche déjà ouverte.

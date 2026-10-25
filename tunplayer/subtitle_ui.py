@@ -208,7 +208,7 @@ class SubtitleMixin:
             rows.clear();store.clear();download.set_sensitive(False)
             status.set_text('Sources actualisées. Cliquez sur Rechercher pour utiliser la configuration enregistrée.')
         sources.pack_start(button('Configurer',configure_sources,'small'),False,False,0);area.pack_start(sources,False,False,0)
-        status=label('Choisissez une langue puis lancez la recherche. La correspondance est estimée, pas une garantie de synchronisation.','muted',True)
+        status=label('La recherche démarre avec le titre et la langue sélectionnés. Vous pouvez modifier les filtres puis relancer la recherche.','muted',True)
         area.pack_start(status,False,False,0);store=Gtk.ListStore(str,str,str,str,int)
         tree=Gtk.TreeView(model=store);tree.set_headers_visible(True)
         for index,caption in enumerate(('Langue','Source','Version / fichier','Correspondance')):
@@ -275,8 +275,18 @@ class SubtitleMixin:
         download.set_sensitive(False);actions.pack_start(search,False,False,0);actions.pack_start(download,False,False,0);actions.pack_start(cancel,False,False,0);actions.pack_start(busy,False,False,0)
         tree.connect('row-activated',download_now);title.connect('activate',lambda _:search_now());area.pack_start(actions,False,False,0)
         dialog.show_all()
+        # "Search online" should immediately populate the results window using
+        # the prefilled title/episode and preferred language.
+        automatic=[None];automatic_serial=task.serial
+        def start_search():
+            automatic[0]=None
+            if not self.closing and dialog in self.subtitle_dialogs and not task.closed and task.serial==automatic_serial:search_now()
+            return False
+        automatic[0]=GLib.idle_add(start_search)
         try:dialog.run()
-        finally:task.close();self.subtitle_dialogs.pop(dialog,None);dialog.destroy();self.player_activity()
+        finally:
+            if automatic[0] is not None:GLib.source_remove(automatic[0])
+            task.close();self.subtitle_dialogs.pop(dialog,None);dialog.destroy();self.player_activity()
 
     def close_subtitle_dialogs(self):
         for dialog,tasks in list(self.subtitle_dialogs.items()):

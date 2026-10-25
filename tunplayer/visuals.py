@@ -8,6 +8,7 @@ gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, GdkPixbuf
 
 ICONS = {
+    'search': '<circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.3 15.3 5.7 5.7"/>',
     'lock': '<rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15" r="1"/>',
     'mute': '<path d="M5 9H2v6h3l5 5V4zM15 9l6 6m0-6-6 6"/>',
     'download': '<path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/>',

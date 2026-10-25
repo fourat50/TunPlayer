@@ -51,6 +51,9 @@ def check():
     assert ssl.create_default_context().cert_store_stats()['x509_ca']>0
     pix=GdkPixbuf.Pixbuf.new_from_file(str(ROOT/'app/assets/tunplayer.svg'))
     assert pix.get_width()>0
+    if (ROOT/'app/tunplayer/visuals.py').exists():
+        from tunplayer.visuals import ICONS,icon_pixbuf
+        for name in ICONS:assert icon_pixbuf(name).get_width()>0,'Icone invalide : '+name
     subtitle_sources=[]
     if (ROOT/'app/tunplayer/subtitles.py').exists():
         from tunplayer.subtitles import SubtitleService,subtitle_text

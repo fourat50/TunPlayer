@@ -2,7 +2,7 @@
 
 Lecteur IPTV de bureau, développé d’abord pour Linux. Interface française graphite et citron vert, panorama vectoriel original, cartes illustrées et bibliothèque locale. Projet inspiré des usages d’[UHF](https://getuhf.com/), avec une identité et une implémentation propres.
 
-**Version 1.5.1 : recherche de sous-titres avec résultats progressifs et test de connexion SubDL. OpenSubtitles.com, Podnapisi, catégories protégées par PIN et distribution autonome Linux.**
+**Version 1.5.2 : ouverture de la recherche de sous-titres corrigée, recherche automatique et test de connexion SubDL. OpenSubtitles.com, Podnapisi, catégories protégées par PIN et distribution autonome Linux.**
 
 ## Démarrer sous Linux
 
@@ -329,7 +329,7 @@ Le volume est affiché par un curseur et un pourcentage, avec un bouton Muet qui
 
 ### Sous-titres en ligne
 
-Pendant un film ou un épisode, ouvrez **Audio et sous-titres → Rechercher en ligne**. Le titre, l’année et les numéros de saison / épisode sont préremplis et modifiables. Choisissez la langue, les sources, puis **Rechercher**. Sélectionnez un résultat et cliquez sur **Télécharger et activer** : la vidéo continue, le fichier est conservé dans le profil et le choix est restauré à la prochaine lecture du même contenu.
+Pendant un film ou un épisode, ouvrez **Audio et sous-titres → Rechercher en ligne**. La fenêtre de résultats s’ouvre et lance automatiquement la recherche avec le titre, l’année, les numéros de saison / épisode et la langue préférée. Ces informations restent modifiables : changez la langue ou les sources, puis cliquez sur **Rechercher** pour relancer. Sélectionnez un résultat et cliquez sur **Télécharger et activer** : la vidéo continue, le fichier est conservé dans le profil et le choix est restauré à la prochaine lecture du même contenu.
 
 Le choix propose 189 langues et variantes issues d’ISO 639 ; un code ISO peut également être saisi. Cela décrit les langues sélectionnables, pas une garantie de disponibilité pour chaque film, épisode ou fournisseur. Les résultats indiquent la source, la version, une correspondance estimée et les variantes malentendants / traduction automatique lorsqu’elles sont renseignées. Une correspondance de titre ne garantit pas la synchronisation avec le montage diffusé par le fournisseur IPTV. Le décalage, réglable de -120 à +120 secondes dans le dialogue Audio et sous-titres, est mémorisé avec le sous-titre téléchargé.
 
@@ -351,7 +351,7 @@ Les téléchargements sont limités en taille, les archives ne sont jamais extra
 
 L’adaptateur cible [Subliminal 2.8](https://github.com/Diaoul/subliminal). S’il est installé dans l’environnement Python utilisé par TunPlayer, une source supplémentaire devient disponible : Gestdown, TVsubtitles et Subtitulamos pour les épisodes, Subtis pour les films, selon leurs langues prises en charge. Les trois sources intégrées utilisent leurs propres adaptateurs ; la clé partagée du projet Subliminal n’est pas utilisée.
 
-Le paquet 1.5.1 fourni ici contient les trois adaptateurs intégrés. Le téléchargement de Subliminal et de ses dépendances n’a pas été possible depuis l’environnement de construction ; leur fonctionnement réel n’a donc pas pu être validé. Sur une machine disposant d’un accès PyPI, une construction enrichie peut être préparée avec :
+Le paquet 1.5.2 fourni ici contient les trois adaptateurs intégrés. Le téléchargement de Subliminal et de ses dépendances n’a pas été possible depuis l’environnement de construction ; leur fonctionnement réel n’a donc pas pu être validé. Sur une machine disposant d’un accès PyPI, une construction enrichie peut être préparée avec :
 
 ```bash
 /usr/bin/python3 -m pip install --target build/subtitle-python -r packaging/subtitles-requirements.txt
