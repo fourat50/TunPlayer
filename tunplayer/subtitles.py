@@ -60,11 +60,16 @@ def media_query(channel,parent=None):
     episode=channel.get('kind')=='episode'
     title=(parent or {}).get('name') if episode else channel.get('name','')
     title=title or re.split(r'\s*[·|]\s*S\d+E\d+',channel.get('name',''),flags=re.I)[0]
-    title=re.sub(r'\b(?:2160p|1080p|720p|4K|FHD|UHD|HDR|HEVC|x26[45])\b','',title,flags=re.I)
-    year=number(channel.get('year'))
+    title=re.sub(r'^\s*(?:(?:FR|EN|AR|VF|VOSTFR|MULTI)\s*[:|_-]\s*|\[(?:FR|EN|AR|VF|VOSTFR|MULTI)\]\s*)+','',title,flags=re.I)
+    title=re.sub(r'\b(?:2160p|1080p|720p|4K|FHD|UHD|HDR|HEVC|x26[45]|WEB-DL|BluRay)\b','',title,flags=re.I)
+    title=re.sub(r'\[\s*\]|\(\s*\)','',title)
+    year=number((parent or {}).get('year')) if episode else 0
+    year=year or number(channel.get('year'))
     found=re.search(r'\((19\d{2}|20\d{2})\)',title)
     if found:
         year=year or number(found[1]);title=title[:found.start()]+title[found.end():]
+    found=re.search(r'\s+(19\d{2}|20\d{2})\s*$',title)
+    if found:year=year or number(found[1]);title=title[:found.start()]
     return dict(title=' '.join(title.strip(' -·|').split())[:240],year=year,kind='episode' if episode else 'movie',
         season=number(channel.get('season')),episode=number(channel.get('episode_num')))
 
@@ -75,7 +80,7 @@ def validate_query(query):
     for key in ('year','season','episode'):result[key]=number(result.get(key))
     if result.get('kind')=='episode' and not result['episode']:raise SubtitleError('Indiquez le numéro de l’épisode.')
     language=language_code(result.get('language',''))
-    if not re.fullmatch(r'[a-z]{2,3}(?:-[a-z]{2,4})?',language):raise SubtitleError('Choisissez une langue ou indiquez son code ISO, par exemple fr ou ar.')
+    if language!='all' and not re.fullmatch(r'[a-z]{2,3}(?:-[a-z]{2,4})?',language):raise SubtitleError('Choisissez une langue ou indiquez son code ISO, par exemple fr ou ar.')
     result['language']=language;return result
 
 
@@ -168,7 +173,8 @@ class OpenSubtitles:
         return dict(self.settings,token=token,base_url=base,expires=int(time.time()+23*3600),username=username)
 
     def search(self,query,cancel):
-        params=dict(query=query['title'],languages=query['language'],type=query['kind'],page=1,order_by='download_count',order_direction='desc')
+        params=dict(query=query['title'],type=query['kind'],page=1,order_by='download_count',order_direction='desc')
+        if query['language']!='all':params['languages']=query['language']
         if query['kind']=='episode':params.update(season_number=query['season'],episode_number=query['episode'])
         elif query['year']:params['year']=query['year']
         rows=[]
@@ -181,7 +187,7 @@ class OpenSubtitles:
                 title=feature.get('parent_title') or feature.get('title','')
                 for file in (attrs.get('files') or [])[:10]:
                     if not number(file.get('file_id')):continue
-                    rows.append(dict(provider=self.name,id=str(file['file_id']),language=str(attrs.get('language') or query['language']),
+                    rows.append(dict(provider=self.name,id=str(file['file_id']),language=str(attrs.get('language') or ('und' if query['language']=='all' else query['language'])),
                         release=str(file.get('file_name') or attrs.get('release') or title)[:320],
                         hearing=bool(attrs.get('hearing_impaired')),machine=bool(attrs.get('machine_translated')),
                         score=ranking(query,title,feature.get('year'),feature.get('season_number'),feature.get('episode_number'))))
@@ -199,7 +205,8 @@ class Podnapisi:
     def __init__(self,http):self.http=http
 
     def search(self,query,cancel):
-        params=dict(keywords=query['title'],language=query['language'])
+        params=dict(keywords=query['title'])
+        if query['language']!='all':params['language']=query['language']
         if query['year']:params['year']=query['year']
         if query['kind']=='episode':params.update(seasons=query['season'],episodes=query['episode'],movie_type=['tv-series','mini-series'])
         else:params['movie_type']='movie'
@@ -213,7 +220,7 @@ class Podnapisi:
                 if query['kind']=='episode' and (number(ep.get('season')),number(ep.get('episode')))!=(query['season'],query['episode']):continue
                 if query['kind']=='movie' and movie.get('type') not in ('movie',None):continue
                 release=' · '.join(str(v) for v in (item.get('releases') or [])+(item.get('custom_releases') or []))
-                rows.append(dict(provider=self.name,id=identity,language=str(item.get('language') or query['language']),
+                rows.append(dict(provider=self.name,id=identity,language=str(item.get('language') or ('und' if query['language']=='all' else query['language'])),
                     release=(release or str(movie.get('title','')))[:320],hearing='hearing_impaired' in (item.get('flags') or []),machine=False,
                     score=ranking(query,movie.get('title',''),movie.get('year'),ep.get('season'),ep.get('episode'))))
             if page>=number(data.get('all_pages',1)):break
@@ -296,22 +303,25 @@ class SubtitleService:
         return values
 
     def search(self,query,enabled,cancel,progress=None):
-        query=validate_query(query);providers=self.providers();rows=[];errors={}
+        query=validate_query(query);providers=self.providers();rows=[];errors={};diagnostics={}
         selected={k:v for k,v in providers.items() if k in enabled}
         if not selected:raise SubtitleError('Sélectionnez au moins une source disponible.')
         pending=set(selected)
         def snapshot():
             unique={}
             for row in rows:
-                if language_code(row['language'])!=query['language']:continue
+                if query['language']!='all' and language_code(row['language'])!=query['language']:continue
                 unique[(row['provider'],row['id'],row['language'])]=row
-            return dict(rows=sorted(unique.values(),key=lambda r:(-r['score'],r['provider'],r['release']))[:240],errors=dict(errors))
+            return dict(rows=sorted(unique.values(),key=lambda r:(-r['score'],r['provider'],r['release']))[:240],errors=dict(errors),diagnostics=dict(diagnostics))
         with ThreadPoolExecutor(max_workers=3,thread_name_prefix='tunplayer-subtitles') as pool:
             futures={pool.submit(p.search,query,cancel):k for k,p in selected.items()}
             for future in as_completed(futures):
                 if cancel.is_set():continue
                 name=futures[future]
-                try:rows.extend(future.result())
+                try:
+                    found=future.result();rows.extend(found)
+                    info=getattr(selected[name],'diagnostic',None)
+                    if isinstance(info,dict):diagnostics[name]=dict(info)
                 except SubtitleError as error:errors[name]=str(error)
                 except Exception:errors[name]='Réponse de la source invalide ou indisponible.'
                 pending.discard(name)

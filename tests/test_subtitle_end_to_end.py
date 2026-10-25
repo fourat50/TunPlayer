@@ -40,13 +40,14 @@ class SubtitleEndToEnd(unittest.TestCase):
         requests=[]
         def fetch(http,url,params=None,**kwargs):
             requests.append((url,dict(params or {})))
-            if url=='https://api.subdl.com/api/v1/subtitles':
+            if url=='https://api.subdl.com/api/v2/subtitles/search':
                 self.assertEqual(params['film_name'],expected_title)
                 self.assertEqual(params['type'],'movie' if kind=='movie' else 'tv')
-                if kind=='episode':self.assertEqual((params['season_number'],params['episode_number']),(1,2))
+                self.assertEqual(kwargs['headers'],{'Authorization':'Bearer TEST_KEY'})
+                if kind=='episode':self.assertEqual((params['season'],params['episode']),(1,2))
                 return json.dumps(dict(status=True,results=[dict(name=expected_title,type=params['type'])],subtitles=[dict(
-                    language='FR',name='caption.fr.zip',release_name='Edition WEB',url='/subtitle/1-2.zip',
-                    season=1 if kind=='episode' else 0,episode=2 if kind=='episode' else 0)])).encode()
+                    lang='french',name='caption.fr.zip',release_name='Saga.S01E02.WEB' if kind=='episode' else 'Edition WEB',
+                    url='/subtitle/1-2.zip',season=None,episode=None)])).encode()
             if url.startswith('https://www.podnapisi.net/'):return b'{"data":[],"all_pages":1}'
             if url=='https://dl.subdl.com/subtitle/1-2.zip':return archive.getvalue()
             self.fail('Unexpected request endpoint')

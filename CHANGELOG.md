@@ -1,5 +1,14 @@
 # Historique
 
+## 1.5.3
+
+- Recherche SubDL alignée sur l’API v2 et son authentification par en-tête, comme le test du compte ; paramètres de saison / épisode adaptés.
+- Lecture des langues sous forme de code ou de nom, reconnaissance des numéros d’épisode dans les noms de fichiers et prise en charge des réponses sans ancien champ `status`.
+- Résultats incomplets conservés pour une sélection manuelle avec indication « Numéro d’épisode à vérifier » ; les épisodes explicitement différents et les packs ambigus restent écartés.
+- Option « Toutes les langues » et compteurs SubDL des fichiers reçus / retenus pour distinguer réponse vide et filtrage.
+- Nettoyage des préfixes IPTV et qualités dans le titre proposé ; second essai sans année si elle rend la recherche de film vide.
+- Téléchargement par identifiant SubDL v2 lorsqu’aucune adresse publique n’est fournie.
+
 ## 1.5.2
 
 - Correction de l’icône « search » manquante : elle provoquait une exception pendant la création de la fenêtre de résultats, juste après la fermeture du dialogue audio.

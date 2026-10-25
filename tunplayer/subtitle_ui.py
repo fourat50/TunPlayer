@@ -189,6 +189,7 @@ class SubtitleMixin:
             field=Gtk.SpinButton.new_with_range(0,maximum,1);field.set_value(query[key]);field.get_accessible().set_name(caption)
             field.set_sensitive(key=='year' or query['kind']=='episode');numbers[key]=field;column.pack_start(field,False,False,0);filters.pack_start(column,False,False,0)
         languages=Gtk.ComboBoxText.new_with_entry()
+        languages.append('all','Toutes les langues')
         for code,name in LANGUAGES:languages.append(code,name+' · '+code)
         languages.set_active_id(query['language'])
         if languages.get_active()<0:languages.get_child().set_text(query['language'])
@@ -228,6 +229,7 @@ class SubtitleMixin:
             rows[:]=result['rows'];store.clear()
             for index,row in enumerate(rows):
                 badges=(' · Malentendants' if row['hearing'] else '')+(' · Traduction automatique' if row['machine'] else '')
+                if row.get('warning'):badges+=' · '+row['warning']
                 match='Titre concordant' if row['score']>=60 else 'À vérifier'
                 it=store.append([row['language'],row.get('source',PROVIDERS[row['provider']]),row['release']+badges,match,index])
                 if selected==(row['provider'],row['id'],row['language']):tree.get_selection().select_iter(it)
@@ -235,7 +237,13 @@ class SubtitleMixin:
             errors=' · '.join(PROVIDERS[k]+' : '+v for k,v in result['errors'].items())
             text=f'{len(rows)} résultat(s).'
             if pending:text+=' Recherche en cours : '+', '.join(PROVIDERS[k] for k in pending)+'.'
-            elif not rows:text='Aucun résultat. Essayez le titre original ou une autre langue.'
+            elif not rows:text='Aucun résultat. Essayez le titre original ou « Toutes les langues ».'
+            info=result.get('diagnostics',{}).get('subdl')
+            if info is not None:
+                text+=f' SubDL : {info["received"]} fichier(s) reçu(s), {info["kept"]} retenu(s).'
+                if not rows and info['received']:
+                    reasons=[caption for key,caption in (('language','langue'),('episode','épisode'),('pack','pack non détaillé'),('link','lien absent')) if info.get(key)]
+                    if reasons:text+=' Filtres : '+', '.join(reasons)+'.'
             status.set_text(text+(' '+errors if errors else ''));download.set_sensitive(bool(rows))
             if not pending:busy.stop();search.set_sensitive(True);cancel.set_sensitive(False)
         def search_now():

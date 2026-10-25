@@ -98,6 +98,15 @@ class SubtitleDialogs(unittest.TestCase):
         with patch.object(self.app,'configure_subtitle_sources',side_effect=configure),patch('tunplayer.subtitle_ui.SubtitleService.search',new=search):
             self.show(DialogHarness(run),self.app.search_subtitles)
 
+    def test_empty_results_show_how_many_remote_candidates_were_filtered(self):
+        row=self.add();self.app.player=playback.FakePlayer();self.app.play(row)
+        result=dict(rows=[],errors={},diagnostics={'subdl':dict(received=3,kept=0,language=3,episode=0,pack=0,link=0)})
+        def run(harness):
+            self.wait(lambda:any('3 fichier(s) reçu(s), 0 retenu(s)' in label.text for label in harness.labels))
+            self.assertTrue(any('Toutes les langues' in label.text for label in harness.labels))
+        with patch('tunplayer.subtitle_ui.SubtitleService.search',return_value=result):
+            self.show(DialogHarness(run),self.app.search_subtitles)
+
     def test_successful_account_test_button_saves_the_tested_key(self):
         private_json(self.app.subtitle_settings_path,{'subdl_api_key':'NEW_KEY'})
         def run(harness):

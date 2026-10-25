@@ -15,6 +15,7 @@ class SubliminalProvider:
         except (ImportError,ValueError):return False
 
     def search(self,query,cancel):
+        if query['language']=='all':raise SubtitleError('Choisissez une langue précise pour les sources supplémentaires Subliminal.')
         from babelfish import Language
         from subliminal import Movie,Episode,ProviderPool
         from subliminal.cache import region

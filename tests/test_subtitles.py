@@ -116,6 +116,20 @@ class SubtitleAPIs(unittest.TestCase):
         with patch.object(SubtitleHTTP,'json') as request:Podnapisi(SubtitleHTTP()).search(QUERY,cancel)
         request.assert_not_called()
 
+    def test_all_languages_omits_language_filters_for_built_in_sources(self):
+        calls=[]
+        def opener(request,**kwargs):
+            calls.append(request)
+            payload=dict(data=[os_row(language='ar')],total_pages=1) if 'opensubtitles.com' in request.full_url else dict(data=[dict(pod_row(),language='ar')],all_pages=1)
+            return io.BytesIO(json.dumps(payload).encode())
+        query=dict(QUERY,language='all')
+        rows=OpenSubtitles(SubtitleHTTP(opener),{'api_key':'test'}).search(query,threading.Event())
+        rows+=Podnapisi(SubtitleHTTP(opener)).search(query,threading.Event())
+        self.assertEqual({r['language'] for r in rows},{'ar'})
+        for request in calls:
+            params=parse_qs(urlsplit(request.full_url).query)
+            self.assertNotIn('language',params);self.assertNotIn('languages',params)
+
     def test_one_provider_failure_does_not_discard_other_results(self):
         good=dict(provider='podnapisi',id='1',language='fr',release='Saga',score=85,hearing=False,machine=False)
         providers={'podnapisi':SimpleNamespace(search=lambda *a:[good,good,dict(good,id='wrong',language='en')]),

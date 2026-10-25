@@ -28,10 +28,12 @@ class SubDLProvider(unittest.TestCase):
         rows=self.provider(response([subtitle(),subtitle(episode=3)])).search(QUERY,threading.Event())
         self.assertEqual(len(rows),1);self.assertEqual(rows[0]['provider'],'subdl');self.assertEqual(rows[0]['score'],100)
         request=self.requests[0];params=parse_qs(urlsplit(request.full_url).query)
-        self.assertEqual(params['api_key'],['SUBDL_SECRET']);self.assertNotIn('OPENSUBTITLES_SECRET',request.full_url)
-        self.assertEqual(params['season_number'],['1']);self.assertEqual(params['episode_number'],['2'])
+        self.assertNotIn('api_key',params);self.assertNotIn('SECRET',request.full_url)
+        self.assertEqual(request.get_header('Authorization'),'Bearer SUBDL_SECRET')
+        self.assertEqual(urlsplit(request.full_url).path,'/api/v2/subtitles/search')
+        self.assertEqual(params['season'],['1']);self.assertEqual(params['episode'],['2'])
         self.assertEqual(params['type'],['tv']);self.assertEqual(params['unpack'],['1']);self.assertEqual(params['languages'],['FR'])
-        self.assertIsNone(request.get_header('Api-key'));self.assertIsNone(request.get_header('Authorization'))
+        self.assertIsNone(request.get_header('Api-key'))
 
     def test_key_is_required_and_opensubtitles_key_is_not_a_fallback(self):
         provider=SubDL(SubtitleHTTP(),{'api_key':'OPENSUBTITLES_SECRET'})
