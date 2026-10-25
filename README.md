@@ -2,7 +2,7 @@
 
 Lecteur IPTV de bureau, développé d’abord pour Linux. Interface française graphite et citron vert, panorama vectoriel original, cartes illustrées et bibliothèque locale. Projet inspiré des usages d’[UHF](https://getuhf.com/), avec une identité et une implémentation propres.
 
-**Version 1.4.0 : recherche et téléchargement de sous-titres en ligne, activation dans le lecteur, catégories protégées par PIN et distribution autonome Linux. Radio, IPTV et téléchargements de films et séries.**
+**Version 1.5.0 : sous-titres SubDL, OpenSubtitles.com et Podnapisi intégrés au lecteur, catégories protégées par PIN et distribution autonome Linux. Radio, IPTV et téléchargements de films et séries.**
 
 ## Démarrer sous Linux
 
@@ -333,20 +333,21 @@ Pendant un film ou un épisode, ouvrez **Audio et sous-titres → Rechercher en 
 
 Le choix propose 189 langues et variantes issues d’ISO 639 ; un code ISO peut également être saisi. Cela décrit les langues sélectionnables, pas une garantie de disponibilité pour chaque film, épisode ou fournisseur. Les résultats indiquent la source, la version, une correspondance estimée et les variantes malentendants / traduction automatique lorsqu’elles sont renseignées. Une correspondance de titre ne garantit pas la synchronisation avec le montage diffusé par le fournisseur IPTV. Le décalage, réglable de -120 à +120 secondes dans le dialogue Audio et sous-titres, est mémorisé avec le sous-titre téléchargé.
 
-Deux sources sont intégrées au paquet autonome sans installation supplémentaire :
+Trois sources sont intégrées au paquet autonome sans installation supplémentaire :
 
 - **Podnapisi** : recherche sans compte, selon la disponibilité de son service.
 - **OpenSubtitles.com** : créez votre propre clé sur la [page des consommateurs API](https://www.opensubtitles.com/en/consumers), puis saisissez-la dans **Préférences → Sous-titres en ligne → Configurer les sources**. La connexion à un compte est facultative et permet d’utiliser son quota. Les limites sont appliquées par le fournisseur ; les erreurs de quota ou d’authentification sont affichées.
+- **SubDL** : obtenez votre clé dans le [panneau API SubDL](https://subdl.com/panel/api) et renseignez le champ **Clé API SubDL** dans la même fenêtre. Cette clé est distincte de celle d’OpenSubtitles. La recherche porte sur les films et les épisodes ; pour les packs de saisons, les fichiers individuels fournis par SubDL sont filtrés sur la saison et l’épisode demandés. Les téléchargements utilisent les liens publics du fournisseur, sans envoi des clés API au serveur de fichiers. Les limites de ce service s’appliquent.
 
-La clé et le jeton de connexion sont enregistrés dans `subtitle-providers.json`, avec des permissions privées ; le mot de passe n’est pas enregistré. Les titres et les numéros d’épisode recherchés sont transmis uniquement aux sources sélectionnées. L’adresse du flux IPTV et ses identifiants ne sont pas transmis. Les fichiers de sous-titres sont enregistrés dans `subtitles/` sous des noms opaques ; aucune clé ni aucun profil utilisateur n’est inclus dans Git ou dans le paquet.
+Les clés et le jeton de connexion sont enregistrés dans `subtitle-providers.json`, avec des permissions privées ; le mot de passe n’est pas enregistré. Les titres et les numéros d’épisode recherchés sont transmis uniquement aux sources sélectionnées. L’adresse du flux IPTV et ses identifiants ne sont pas transmis. Les fichiers de sous-titres sont enregistrés dans `subtitles/` sous des noms opaques ; aucune clé ni aucun profil utilisateur n’est inclus dans Git ou dans le paquet.
 
 Les téléchargements sont limités en taille, les archives ne sont jamais extraites dans l’arborescence et une archive contenant plusieurs sous-titres est refusée pour éviter de sélectionner un autre épisode. Les recherches et téléchargements s’exécutent en arrière-plan ; fermer la recherche ou changer de vidéo empêche l’activation d’un ancien résultat. Les contrôles PIN s’appliquent aussi à l’activation et à la restauration.
 
 #### Extension Subliminal facultative
 
-L’adaptateur cible [Subliminal 2.8](https://github.com/Diaoul/subliminal). S’il est installé dans l’environnement Python utilisé par TunPlayer, une source supplémentaire devient disponible : Gestdown, TVsubtitles et Subtitulamos pour les épisodes, Subtis pour les films, selon leurs langues prises en charge. Les deux sources intégrées utilisent leurs propres adaptateurs ; la clé partagée du projet Subliminal n’est pas utilisée.
+L’adaptateur cible [Subliminal 2.8](https://github.com/Diaoul/subliminal). S’il est installé dans l’environnement Python utilisé par TunPlayer, une source supplémentaire devient disponible : Gestdown, TVsubtitles et Subtitulamos pour les épisodes, Subtis pour les films, selon leurs langues prises en charge. Les trois sources intégrées utilisent leurs propres adaptateurs ; la clé partagée du projet Subliminal n’est pas utilisée.
 
-Le paquet 1.4.0 fourni ici contient les deux adaptateurs intégrés. Le téléchargement de Subliminal et de ses dépendances n’a pas été possible depuis l’environnement de construction ; leur fonctionnement réel n’a donc pas pu être validé. Sur une machine disposant d’un accès PyPI, une construction enrichie peut être préparée avec :
+Le paquet 1.5.0 fourni ici contient les trois adaptateurs intégrés. Le téléchargement de Subliminal et de ses dépendances n’a pas été possible depuis l’environnement de construction ; leur fonctionnement réel n’a donc pas pu être validé. Sur une machine disposant d’un accès PyPI, une construction enrichie peut être préparée avec :
 
 ```bash
 /usr/bin/python3 -m pip install --target build/subtitle-python -r packaging/subtitles-requirements.txt

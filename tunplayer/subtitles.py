@@ -19,7 +19,7 @@ from .catalog import fold
 from .subtitle_languages import ALIASES
 
 MAX_BYTES=4*1024*1024
-PROVIDERS={'podnapisi':'Podnapisi','opensubtitles':'OpenSubtitles.com','subliminal':'Subliminal'}
+PROVIDERS={'podnapisi':'Podnapisi','opensubtitles':'OpenSubtitles.com','subdl':'SubDL','subliminal':'Subliminal'}
 
 
 class SubtitleError(ValueError):pass
@@ -90,7 +90,7 @@ def trusted_url(url):
         parsed=urlsplit(url);port=parsed.port
     except (ValueError,TypeError):raise SubtitleError('Adresse de sous-titres invalide.') from None
     host=parsed.hostname or ''
-    allowed=any(host==domain or host.endswith('.'+domain) for domain in ('opensubtitles.com','opensubtitles.org','podnapisi.net'))
+    allowed=any(host==domain or host.endswith('.'+domain) for domain in ('opensubtitles.com','opensubtitles.org','podnapisi.net','subdl.com'))
     if parsed.scheme!='https' or not allowed or parsed.username or parsed.password or port not in (None,443):
         raise SubtitleError('Adresse de sous-titres refusée.')
     return url
@@ -281,6 +281,8 @@ class SubtitleService:
 
     def providers(self):
         values={'podnapisi':Podnapisi(self.http),'opensubtitles':OpenSubtitles(self.http,self.settings)}
+        from .subtitle_subdl import SubDL
+        values['subdl']=SubDL(self.http,self.settings)
         from .subtitle_subliminal import SubliminalProvider
         if SubliminalProvider.available():values['subliminal']=SubliminalProvider()
         return values

@@ -1,5 +1,13 @@
 # Historique
 
+## 1.5.0
+
+- Source SubDL ajoutée à la recherche de sous-titres de films et d’épisodes, avec clé API personnelle indépendante d’OpenSubtitles.com.
+- Configuration des sources défilante, lien vers le panneau API SubDL et conservation privée de la clé avec les paramètres existants.
+- Prise en charge des fichiers individuels de packs de saisons lorsque leur saison et leur épisode correspondent à la recherche.
+- Correspondance des variantes portugais brésilien / portugais et chinois simplifié / traditionnel avec les codes SubDL.
+- Liens de téléchargement SubDL limités à son serveur de fichiers HTTPS ; clés API absentes des requêtes de téléchargement et erreurs expurgées.
+
 ## 1.4.0
 
 - Recherche de sous-titres depuis le lecteur, avec titre modifiable, année, saison, épisode et langue préférée mémorisée ; 189 langues et variantes proposées, avec saisie de code ISO.

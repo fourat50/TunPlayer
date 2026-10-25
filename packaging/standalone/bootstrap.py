@@ -59,6 +59,7 @@ def check():
         assert subtitle_text(b'1\n00:00:00,000 --> 00:00:01,000\nTest\n','test.srt')[1]=='.srt'
         subtitle_sources=list(SubtitleService().providers())
         assert {'podnapisi','opensubtitles'}.issubset(subtitle_sources)
+        if (ROOT/'app/tunplayer/subtitle_subdl.py').exists():assert 'subdl' in subtitle_sources
         if 'subliminal' in json.loads((ROOT/'build-info.json').read_text()).get('python_extras',{}):
             assert 'subliminal' in subtitle_sources,'Extension Subliminal incomplete'
     subprocess.run([str(RUNTIME/'bin/ffmpeg'),'-version'],check=True,stdout=subprocess.DEVNULL)

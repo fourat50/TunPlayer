@@ -60,7 +60,7 @@ class SubtitleMixin:
     def subtitle_settings_panel(self):
         from .app import box,label,button
         panel=box(True,12,'panel');panel.pack_start(label('Sous-titres en ligne','section-title'),False,False,0)
-        panel.pack_start(label('Recherchez et activez des sous-titres depuis « Audio et sous-titres » pendant un film ou un épisode. Podnapisi fonctionne sans compte ; OpenSubtitles.com nécessite votre clé API.','muted',True),False,False,0)
+        panel.pack_start(label('Recherchez et activez des sous-titres depuis « Audio et sous-titres » pendant un film ou un épisode. Podnapisi fonctionne sans compte ; OpenSubtitles.com et SubDL nécessitent chacun leur clé API.','muted',True),False,False,0)
         panel.pack_start(button('Configurer les sources',self.configure_subtitle_sources,'ghost',symbol='subtitles'),False,False,0)
         return panel
 
@@ -69,7 +69,9 @@ class SubtitleMixin:
         settings=read_json(self.subtitle_settings_path)
         dialog=Gtk.Dialog(title='Sources de sous-titres',transient_for=self.window,modal=True)
         dialog.add_buttons('Fermer',Gtk.ResponseType.CLOSE,'Enregistrer',Gtk.ResponseType.APPLY)
-        area=dialog.get_content_area();area.set_border_width(20);area.set_spacing(12)
+        scroll=Gtk.ScrolledWindow();scroll.set_policy(Gtk.PolicyType.NEVER,Gtk.PolicyType.AUTOMATIC)
+        dialog.get_content_area().pack_start(scroll,True,True,0)
+        area=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=12);area.set_border_width(20);scroll.add(area)
         area.pack_start(label('OpenSubtitles.com','section-title'),False,False,0)
         area.pack_start(label('La clé API est requise. La connexion au compte est facultative et permet d’utiliser son quota. Le mot de passe n’est pas enregistré.','muted',True),False,False,0)
         link=Gtk.LinkButton.new_with_label('https://www.opensubtitles.com/en/consumers','Créer une clé API OpenSubtitles.com')
@@ -81,12 +83,13 @@ class SubtitleMixin:
         status=label('Compte mémorisé : '+str(settings.get('username','')) if settings.get('token') else 'Connexion facultative.','muted',True)
         area.pack_start(status,False,False,0);task=LatestTask();self.subtitle_dialogs[dialog]=task
         def snapshot():
-            value={k:entries[k].get_text().strip() for k in ('api_key','username')}
+            value={k:entries[k].get_text().strip() for k in ('api_key','username','subdl_api_key')}
             if value['api_key']==settings.get('api_key') and value['username']==settings.get('username'):
                 for key in ('token','expires','base_url'):
                     if key in settings:value[key]=settings[key]
             return value
         def save(value):
+            value=dict(value,subdl_api_key=entries['subdl_api_key'].get_text().strip())
             try:private_json(self.subtitle_settings_path,value)
             except OSError:status.set_text('Impossible d’enregistrer la configuration.');return False
             settings.clear();settings.update(value);return True
@@ -106,9 +109,15 @@ class SubtitleMixin:
             for key in ('token','expires','base_url'):value.pop(key,None)
             if save(value):status.set_text('Session locale déconnectée.');entries['password'].set_text('')
         area.pack_start(button('Déconnecter le compte',logout,'small'),False,False,0)
+        area.pack_start(label('SubDL','section-title'),False,False,0)
+        area.pack_start(label('Ajoutez la clé API de votre compte SubDL pour rechercher des films et des épisodes.','muted',True),False,False,0)
+        area.pack_start(Gtk.LinkButton.new_with_label('https://subdl.com/panel/api','Obtenir une clé API SubDL'),False,False,0)
+        subdl_key=Gtk.Entry();subdl_key.set_visibility(False);subdl_key.set_placeholder_text('Clé API SubDL')
+        subdl_key.get_accessible().set_name('Clé API SubDL');subdl_key.set_text(str(settings.get('subdl_api_key','')))
+        entries['subdl_api_key']=subdl_key;area.pack_start(subdl_key,False,False,0)
         from .subtitle_subliminal import SubliminalProvider
-        area.pack_start(label('Podnapisi : disponible sans compte.\nSubliminal : '+('installé, sources supplémentaires disponibles.' if SubliminalProvider.available() else 'extension facultative absente ; les deux sources intégrées restent disponibles.'),'muted',True),False,False,0)
-        dialog.set_default_size(570,450);dialog.show_all()
+        area.pack_start(label('Podnapisi : disponible sans compte.\nSubliminal : '+('installé, sources supplémentaires disponibles.' if SubliminalProvider.available() else 'extension facultative absente ; les sources intégrées restent disponibles.'),'muted',True),False,False,0)
+        dialog.set_default_size(600,620);dialog.show_all()
         try:
             while dialog.run()==Gtk.ResponseType.APPLY:
                 task.cancel();connect.set_sensitive(True)
@@ -142,7 +151,8 @@ class SubtitleMixin:
         sources=box(spacing=12);checks={}
         available=SubtitleService().providers()
         for key,caption in PROVIDERS.items():
-            check=Gtk.CheckButton(label=caption);check.set_active(key=='podnapisi' or key=='opensubtitles' and bool(read_json(self.subtitle_settings_path).get('api_key')))
+            settings=read_json(self.subtitle_settings_path)
+            check=Gtk.CheckButton(label=caption);check.set_active(key=='podnapisi' or key=='opensubtitles' and bool(settings.get('api_key')) or key=='subdl' and bool(settings.get('subdl_api_key')))
             check.set_sensitive(key in available);checks[key]=check;sources.pack_start(check,False,False,0)
         sources.pack_start(button('Configurer',self.configure_subtitle_sources,'small'),False,False,0);area.pack_start(sources,False,False,0)
         status=label('Choisissez une langue puis lancez la recherche. La correspondance est estimée, pas une garantie de synchronisation.','muted',True)
