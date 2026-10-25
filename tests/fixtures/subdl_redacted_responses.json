@@ -1,0 +1,263 @@
+[
+  {
+    "query": {
+      "title": "Inception",
+      "year": 2010,
+      "kind": "movie",
+      "season": 0,
+      "episode": 0,
+      "language": "all"
+    },
+    "response": {
+      "status": true,
+      "results": [
+        {
+          "name": "Inception",
+          "type": "movie",
+          "year": 2010,
+          "sd_id": 2922,
+          "imdb_id": "tt1375666"
+        }
+      ],
+      "subtitles": [
+        {
+          "name": "Inception.2010.BLURAY.720P-1080P.MOVIEFULL-HD.COM.km.srt",
+          "release_name": "Inception 2010 BLURAY 720P-1080P MOVIEFULL-HD.COM.Khmer",
+          "language": "KM",
+          "lang": "Khmer",
+          "season": 0,
+          "episode": null,
+          "full_season": false,
+          "url": "/subtitle/3733837-8655526.zip?api_key=[masqué]",
+          "unpack_files": [
+            {
+              "name": "Inception.2010.BLURAY.720P-1080P.MOVIEFULL-HD.COM.km.srt",
+              "release_name": "Inception 2010 BLURAY 720P-1080P MOVIEFULL-HD.COM.Khmer",
+              "language": "KM",
+              "season": 0,
+              "episode": 0,
+              "url": "/subtitle/rRAENx1G8L/neAzxu1Btz?api_key=[masqué]",
+              "file_n_id": "neAzxu1Btz"
+            }
+          ]
+        },
+        {
+          "name": "Inception.2010.Bluray.1080p.DTS-HD.x264-Grym.UniVerseHub.[shqip].zip",
+          "release_name": "Inception.2010.Bluray.1080p.DTS-HD.x264-Grym.UniVerseHub.[shqip]",
+          "language": "SQ",
+          "lang": "Albanian",
+          "season": 0,
+          "episode": null,
+          "full_season": false,
+          "url": "/subtitle/3726290-8647720.zip?api_key=[masqué]",
+          "unpack_files": [
+            {
+              "name": "SUBS/Inception.2010.Bluray.1080p.DTS-HD.x264-Grym.UniVerseHub.[shqip].srt",
+              "release_name": "Inception.2010.Bluray.1080p.DTS-HD.x264-Grym.UniVerseHub.[shqip]",
+              "language": "SQ",
+              "season": 0,
+              "episode": 0,
+              "url": "/subtitle/1m5e1RXV8S/TIwEv47s0w?api_key=[masqué]",
+              "file_n_id": "TIwEv47s0w"
+            }
+          ]
+        },
+        {
+          "name": "Inception.2010.1080p.UHD.Bluray.DTS.HDR.x265.D-Z0N3.cs.srt",
+          "release_name": "Inception.2010.1080p.UHD.Bluray.DTS.HDR.x265.D-Z0N3.Czech",
+          "language": "CS",
+          "lang": "Czech",
+          "season": 0,
+          "episode": null,
+          "full_season": false,
+          "url": "/subtitle/3724304-8645713.zip?api_key=[masqué]",
+          "unpack_files": [
+            {
+              "name": "Inception.2010.1080p.UHD.Bluray.DTS.HDR.x265.D-Z0N3.cs.srt",
+              "release_name": "Inception.2010.1080p.UHD.Bluray.DTS.HDR.x265.D-Z0N3.Czech",
+              "language": "CS",
+              "season": 0,
+              "episode": 0,
+              "url": "/subtitle/i3mpb5cDlm/zJfD3ybs6w?api_key=[masqué]",
+              "file_n_id": "zJfD3ybs6w"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "query": {
+      "title": "Inception",
+      "year": 2010,
+      "kind": "movie",
+      "season": 0,
+      "episode": 0,
+      "language": "all"
+    },
+    "response": {
+      "status": true,
+      "results": [
+        {
+          "name": "Inception",
+          "type": "movie",
+          "year": 2010,
+          "sd_id": 2922,
+          "imdb_id": "tt1375666"
+        }
+      ],
+      "subtitles": [
+        {
+          "name": "SUBDL::inception-hebrew-3013284.zip",
+          "release_name": "Inception.2010.1080p.BluRay.x264.AC3-PxHD",
+          "language": "HE",
+          "lang": "hebrew",
+          "season": 0,
+          "episode": null,
+          "full_season": false,
+          "url": "/subtitle/3012190-3013284.zip?api_key=[masqué]",
+          "unpack_files": [
+            {
+              "name": "Inception.2010.1080p.BluRay.x264.AC3-PxHD.srt",
+              "release_name": "Inception.2010.1080p.BluRay.x264.AC3-PxHD",
+              "language": "HE",
+              "season": 0,
+              "episode": 0,
+              "url": "/subtitle/VgoRkfhFmG/ET0dQTZidS?api_key=[masqué]",
+              "file_n_id": "ET0dQTZidS"
+            }
+          ]
+        },
+        {
+          "name": "SUBDL::inception-2827586.zip",
+          "release_name": "Inception.2010.1080p.BluRay.x265-RARBG",
+          "language": "KO",
+          "lang": "korean",
+          "season": 0,
+          "episode": null,
+          "full_season": false,
+          "url": "/subtitle/2812136-2827586.zip?api_key=[masqué]",
+          "unpack_files": [
+            {
+              "name": "Inception.2010.1080p.BluRay.x265-RARBG.srt",
+              "release_name": "Inception.2010.1080p.BluRay.x265-RARBG",
+              "language": "KO",
+              "season": 0,
+              "episode": 0,
+              "url": "/subtitle/QQ5P4D32Oz/p5MkkoRV1J?api_key=[masqué]",
+              "file_n_id": "p5MkkoRV1J"
+            }
+          ]
+        },
+        {
+          "name": "SUBDL::inception-2805569.zip",
+          "release_name": "Inception.2010.DTS-HD.DTS.MULTISUBS.1080p.BluRay.x264.HQ-TUSAHD.isl",
+          "language": "IS",
+          "lang": "icelandic",
+          "season": 0,
+          "episode": null,
+          "full_season": false,
+          "url": "/subtitle/2812135-2805569.zip?api_key=[masqué]",
+          "unpack_files": [
+            {
+              "name": "Inception.2010.DTS-HD.DTS.MULTISUBS.1080p.BluRay.x264.HQ-TUSAHD.isl.srt",
+              "release_name": "Inception.2010.DTS-HD.DTS.MULTISUBS.1080p.BluRay.x264.HQ-TUSAHD.isl",
+              "language": "IS",
+              "season": 0,
+              "episode": 0,
+              "url": "/subtitle/M0BgshCPoL/168iZvNMvr?api_key=[masqué]",
+              "file_n_id": "168iZvNMvr"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "query": {
+      "title": "500 Miles",
+      "year": 2026,
+      "kind": "movie",
+      "season": 0,
+      "episode": 0,
+      "language": "all"
+    },
+    "response": {
+      "status": true,
+      "results": [
+        {
+          "name": "500 Miles",
+          "type": "movie",
+          "year": 2026,
+          "sd_id": 12719356,
+          "imdb_id": "tt31216533"
+        }
+      ],
+      "subtitles": [
+        {
+          "name": "500.Miles.2026.1080p.WEBRip.x264.AAC5.1-YTS.GG.YTS.BZ.zip",
+          "release_name": "500.Miles.2026.1080p.WEBRip.x264.AAC5.1-YTS.GG.YTS.BZ",
+          "language": "TH",
+          "lang": "Thai",
+          "season": 0,
+          "episode": null,
+          "full_season": false,
+          "url": "/subtitle/3728418-8649952.zip?api_key=[masqué]",
+          "unpack_files": [
+            {
+              "name": "500.Miles.2026.1080p.WEBRip.x264.AAC5.1-YTS.GG.YTS.BZ.SUBTEKS.ME.th.srt",
+              "release_name": "500.Miles.2026.1080p.WEBRip.x264.AAC5.1-YTS.GG.YTS.BZ.SUBTEKS.ME.th",
+              "language": "TH",
+              "season": 0,
+              "episode": 0,
+              "url": "/subtitle/uIAuBbnAal/8skycdXFRo?api_key=[masqué]",
+              "file_n_id": "8skycdXFRo"
+            }
+          ]
+        },
+        {
+          "name": "500.Miles_(2026)_24fps_by.flitze.nl.srt",
+          "release_name": "500 Miles_(2026)_24fps_by flitze.Dutch",
+          "language": "NL",
+          "lang": "Dutch",
+          "season": 0,
+          "episode": null,
+          "full_season": false,
+          "url": "/subtitle/3725992-8647419.zip?api_key=[masqué]",
+          "unpack_files": [
+            {
+              "name": "500.Miles_(2026)_24fps_by.flitze.nl.srt",
+              "release_name": "500 Miles_(2026)_24fps_by flitze.Dutch",
+              "language": "NL",
+              "season": 0,
+              "episode": 0,
+              "url": "/subtitle/fb03pItorK/U0KWMMXdPR?api_key=[masqué]",
+              "file_n_id": "U0KWMMXdPR"
+            }
+          ]
+        },
+        {
+          "name": "500.Miles.2026.1080p.WEBRip.x264.AAC5.1-[YTS.GG - YTS.BZ].zip",
+          "release_name": "500.Miles.2026.1080p.WEBRip.x264.AAC5.1-[YTS.GG - YTS.BZ]",
+          "language": "EN",
+          "lang": "English",
+          "season": 0,
+          "episode": null,
+          "full_season": false,
+          "url": "/subtitle/3723079-8644346.zip?api_key=[masqué]",
+          "unpack_files": [
+            {
+              "name": "500 Miles_(2026)_24fps_by flitze_English.srt",
+              "release_name": "500 Miles_(2026)_24fps_by flitze_English",
+              "language": "EN",
+              "season": 0,
+              "episode": 0,
+              "url": "/subtitle/YY9SIehbb2/h1NmyiVaiy?api_key=[masqué]",
+              "file_n_id": "h1NmyiVaiy"
+            }
+          ]
+        }
+      ]
+    }
+  }
+]

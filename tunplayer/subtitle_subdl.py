@@ -4,7 +4,7 @@ API contract: https://subdl.com/developers
 """
 import json
 import re
-from urllib.parse import urljoin,urlsplit
+from urllib.parse import urljoin,urlsplit,urlunsplit,parse_qsl
 from .subtitles import SubtitleError,number,ranking,trusted_url,language_code
 from .subtitle_languages import ENGLISH_NAMES
 from .catalog import fold
@@ -14,9 +14,14 @@ def download_url(value):
     if not isinstance(value,str) or not value:raise SubtitleError('Lien de téléchargement SubDL invalide.')
     url=urljoin('https://dl.subdl.com/',value)
     trusted_url(url);parsed=urlsplit(url)
-    if parsed.hostname!='dl.subdl.com' or not parsed.path.startswith('/subtitle/') or parsed.query or parsed.fragment:
+    if parsed.hostname!='dl.subdl.com' or not parsed.path.startswith('/subtitle/') or parsed.fragment:
         raise SubtitleError('Lien de téléchargement SubDL refusé.')
-    return url
+    try:parameters=parse_qsl(parsed.query,keep_blank_values=True,max_num_fields=16)
+    except ValueError:raise SubtitleError('Lien de téléchargement SubDL invalide.') from None
+    if any(key.lower()!='api_key' for key,_ in parameters):raise SubtitleError('Paramètre de téléchargement SubDL non reconnu.')
+    # v2 appends the user's key to both ZIP and unpacked-file URLs. Keep it out
+    # of result identifiers/cache paths and authenticate our own key by header.
+    return urlunsplit((parsed.scheme,parsed.netloc,parsed.path,'',''))
 
 
 def flag(value):return value.lower() in ('true','1','yes') if isinstance(value,str) else bool(value)
@@ -134,7 +139,9 @@ class SubDL:
     def download(self,row):
         if row.get('download_url'):
             url=download_url(row['download_url'])
-            return self.http.fetch(url),urlsplit(url).path.rsplit('/',1)[-1]
+            key=str(self.settings.get('subdl_api_key','')).strip()
+            headers={'X-API-Key':key} if key else None
+            return self.http.fetch(url,headers=headers),urlsplit(url).path.rsplit('/',1)[-1]
         identity=str(row.get('subdl_id') or '')
         if not re.fullmatch(r'[A-Za-z0-9_-]{1,120}',identity):raise SubtitleError('Lien de sous-titre SubDL absent. Relancez la recherche.')
         data=self.http.fetch('https://api.subdl.com/api/v2/subtitles/'+identity+'/download',params={'format':'file'},headers=self.headers())

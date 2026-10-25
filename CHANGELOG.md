@@ -1,5 +1,12 @@
 # Historique
 
+## 1.5.4
+
+- Correction démontrée par le diagnostic réel : les liens SubDL contenant `?api_key=…` étaient tous rejetés, malgré une réponse de recherche valide (64 fichiers reçus pour Inception, 10 pour le contenu récent du profil).
+- Acceptation de ce format sur le serveur de fichiers SubDL vérifié ; suppression de la clé de l’adresse conservée et authentification du téléchargement avec la clé personnelle par en-tête.
+- Suppression de cet en-tête lors d’une redirection, contrôle des domaines et rejet des paramètres inconnus conservés.
+- Tests de régression issus des réponses réelles expurgées et outil de diagnostic avec validation facultative d’un téléchargement, sans modification du profil.
+
 ## 1.5.3
 
 - Recherche SubDL alignée sur l’API v2 et son authentification par en-tête, comme le test du compte ; paramètres de saison / épisode adaptés.

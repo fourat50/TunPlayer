@@ -108,7 +108,7 @@ class SubtitleRedirect(HTTPRedirectHandler):
         trusted_url(newurl)
         result=super().redirect_request(req,fp,code,msg,headers,newurl)
         if result:
-            for name in ('Authorization','Api-key'):result.remove_header(name)
+            for name in ('Authorization','Api-key','X-api-key'):result.remove_header(name)
         return result
 
 

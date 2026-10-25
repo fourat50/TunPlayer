@@ -2,7 +2,7 @@
 
 Lecteur IPTV de bureau, développé d’abord pour Linux. Interface française graphite et citron vert, panorama vectoriel original, cartes illustrées et bibliothèque locale. Projet inspiré des usages d’[UHF](https://getuhf.com/), avec une identité et une implémentation propres.
 
-**Version 1.5.3 : recherche SubDL v2, reconnaissance des métadonnées, option Toutes les langues et compteurs des résultats. OpenSubtitles.com, Podnapisi, catégories protégées par PIN et distribution autonome Linux.**
+**Version 1.5.4 : correction des liens SubDL authentifiés qui empêchaient l’affichage des résultats, diagnostic et validation du téléchargement. OpenSubtitles.com, Podnapisi, catégories protégées par PIN et distribution autonome Linux.**
 
 ## Démarrer sous Linux
 
@@ -337,7 +337,7 @@ Trois sources sont intégrées au paquet autonome sans installation supplémenta
 
 - **Podnapisi** : recherche sans compte, selon la disponibilité de son service.
 - **OpenSubtitles.com** : créez votre propre clé sur la [page des consommateurs API](https://www.opensubtitles.com/en/consumers), puis saisissez-la dans **Préférences → Sous-titres en ligne → Configurer les sources**. La connexion à un compte est facultative et permet d’utiliser son quota. Les limites sont appliquées par le fournisseur ; les erreurs de quota ou d’authentification sont affichées.
-- **SubDL** : obtenez votre clé dans le [panneau API SubDL](https://subdl.com/panel/api) et renseignez le champ **Clé API SubDL** dans la même fenêtre. Cette clé est distincte de celle d’OpenSubtitles. La recherche et le test du compte utilisent l’API v2 avec authentification par en-tête. Pour les packs de saisons, les fichiers individuels sont reconnus par leurs métadonnées ou leur nom. Un épisode explicitement différent est écarté ; une information absente dans un résultat individuel est signalée pour vérification manuelle. Les téléchargements utilisent un lien public ou un identifiant v2 selon le résultat ; la clé n’est envoyée qu’au serveur API, jamais au CDN de fichiers. Les limites de ce service s’appliquent.
+- **SubDL** : obtenez votre clé dans le [panneau API SubDL](https://subdl.com/panel/api) et renseignez le champ **Clé API SubDL** dans la même fenêtre. Cette clé est distincte de celle d’OpenSubtitles. La recherche et le test du compte utilisent l’API v2 avec authentification par en-tête. Pour les packs de saisons, les fichiers individuels sont reconnus par leurs métadonnées ou leur nom. Un épisode explicitement différent est écarté ; une information absente dans un résultat individuel est signalée pour vérification manuelle. Les téléchargements utilisent un lien du serveur SubDL vérifié ou un identifiant v2 selon le résultat. Le paramètre `api_key` fourni dans les liens est retiré ; votre clé SubDL est transmise par en-tête au serveur de fichiers SubDL et supprimée lors des redirections. Les limites de ce service s’appliquent.
 
 Les clés et le jeton de connexion sont enregistrés dans `subtitle-providers.json`, avec des permissions privées ; le mot de passe n’est pas enregistré. Les titres et les numéros d’épisode recherchés sont transmis uniquement aux sources sélectionnées. L’adresse du flux IPTV et ses identifiants ne sont pas transmis. Les fichiers de sous-titres sont enregistrés dans `subtitles/` sous des noms opaques ; aucune clé ni aucun profil utilisateur n’est inclus dans Git ou dans le paquet.
 
@@ -347,13 +347,15 @@ Si vous ajoutez une clé avec **Configurer** depuis une recherche déjà ouverte
 
 Lorsque SubDL répond, le statut indique **N fichier(s) reçu(s), M retenu(s)**. Si N est nul, le service n’a pas renvoyé de fichiers pour cette requête. Si N est positif mais M nul, les raisons de filtrage sont indiquées : langue, épisode, pack non détaillé ou lien absent. Essayez le titre original, corrigez l’année / les numéros ou choisissez **Toutes les langues** pour élargir une recherche vide. L’année du film est retirée lors d’un second essai si elle exclut tous les résultats ; le titre proposé est nettoyé des préfixes IPTV et des indications de qualité.
 
+En cas de problème, `/usr/bin/python3 scripts/diagnose_subtitles.py --download` teste le compte, une recherche témoin et le contenu récent du profil avec le code installé. Il valide aussi un sous-titre témoin sans modifier la bibliothèque. Le rapport privé `dist/subtitle-diagnostic.json` masque les clés et ne contient pas le texte du sous-titre. Pour vérifier le code du projet avant installation, ajoutez `--app-path /home/fourat/Desktop/TunPlayer`.
+
 Les téléchargements sont limités en taille, les archives ne sont jamais extraites dans l’arborescence et une archive contenant plusieurs sous-titres est refusée pour éviter de sélectionner un autre épisode. Les recherches et téléchargements s’exécutent en arrière-plan ; fermer la recherche ou changer de vidéo empêche l’activation d’un ancien résultat. Les contrôles PIN s’appliquent aussi à l’activation et à la restauration.
 
 #### Extension Subliminal facultative
 
 L’adaptateur cible [Subliminal 2.8](https://github.com/Diaoul/subliminal). S’il est installé dans l’environnement Python utilisé par TunPlayer, une source supplémentaire devient disponible : Gestdown, TVsubtitles et Subtitulamos pour les épisodes, Subtis pour les films, selon leurs langues prises en charge. Les trois sources intégrées utilisent leurs propres adaptateurs ; la clé partagée du projet Subliminal n’est pas utilisée.
 
-Le paquet 1.5.3 fourni ici contient les trois adaptateurs intégrés. Le téléchargement de Subliminal et de ses dépendances n’a pas été possible depuis l’environnement de construction ; leur fonctionnement réel n’a donc pas pu être validé. Sur une machine disposant d’un accès PyPI, une construction enrichie peut être préparée avec :
+Le paquet 1.5.4 fourni ici contient les trois adaptateurs intégrés. Le téléchargement de Subliminal et de ses dépendances n’a pas été possible depuis l’environnement de construction ; leur fonctionnement réel n’a donc pas pu être validé. Sur une machine disposant d’un accès PyPI, une construction enrichie peut être préparée avec :
 
 ```bash
 /usr/bin/python3 -m pip install --target build/subtitle-python -r packaging/subtitles-requirements.txt

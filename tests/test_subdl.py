@@ -83,17 +83,17 @@ class SubDLProvider(unittest.TestCase):
         provider=self.provider(response([]));cancel=threading.Event();cancel.set()
         self.assertEqual(provider.search(QUERY,cancel),[]);self.assertEqual(self.requests,[])
 
-    def test_download_sends_no_provider_credentials_to_the_cdn(self):
+    def test_download_sends_own_subdl_key_by_header_without_opensubtitles_credentials(self):
         requests=[]
         def opener(request,**kwargs):requests.append(request);return io.BytesIO(SRT)
         provider=SubDL(SubtitleHTTP(opener),{'api_key':'OS_SECRET','subdl_api_key':'SUBDL_SECRET'})
         data,name=provider.download({'download_url':'https://dl.subdl.com/subtitle/123-456.zip'})
         self.assertEqual(data,SRT);self.assertEqual(name,'123-456.zip')
         self.assertNotIn('SECRET',requests[0].full_url);self.assertIsNone(requests[0].get_header('Authorization'))
-        self.assertIsNone(requests[0].get_header('Api-key'));self.assertIsNone(requests[0].get_header('X-api-key'))
+        self.assertIsNone(requests[0].get_header('Api-key'));self.assertEqual(requests[0].get_header('X-api-key'),'SUBDL_SECRET')
 
     def test_download_link_cannot_include_a_key_or_an_untrusted_host(self):
-        for url in ('//evil.example/subtitle/a','https://api.subdl.com/subtitle/a','/subtitle/a?api_key=secret','file:///etc/passwd','/panel/api'):
+        for url in ('//evil.example/subtitle/a','https://api.subdl.com/subtitle/a','/subtitle/a?other=secret','file:///etc/passwd','/panel/api'):
             with self.subTest(url=url),self.assertRaises(SubtitleError):download_url(url)
 
     def test_subdl_is_available_without_an_extra_python_package(self):

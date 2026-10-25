@@ -47,9 +47,11 @@ class SubtitleEndToEnd(unittest.TestCase):
                 if kind=='episode':self.assertEqual((params['season'],params['episode']),(1,2))
                 return json.dumps(dict(status=True,results=[dict(name=expected_title,type=params['type'])],subtitles=[dict(
                     lang='french',name='caption.fr.zip',release_name='Saga.S01E02.WEB' if kind=='episode' else 'Edition WEB',
-                    url='/subtitle/1-2.zip',season=None,episode=None)])).encode()
+                    url='/subtitle/1-2.zip?api_key=RESPONSE_KEY',season=None,episode=None)])).encode()
             if url.startswith('https://www.podnapisi.net/'):return b'{"data":[],"all_pages":1}'
-            if url=='https://dl.subdl.com/subtitle/1-2.zip':return archive.getvalue()
+            if url=='https://dl.subdl.com/subtitle/1-2.zip':
+                self.assertEqual(kwargs['headers'],{'X-API-Key':'TEST_KEY'})
+                return archive.getvalue()
             self.fail('Unexpected request endpoint')
         def run(harness):
             if harness.dialog_titles[-1]=='Audio et sous-titres':return 101
