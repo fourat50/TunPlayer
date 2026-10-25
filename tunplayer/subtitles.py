@@ -8,6 +8,8 @@ import math
 import os
 from pathlib import Path
 import re
+import socket
+import ssl
 import tempfile
 import time
 from urllib.error import HTTPError
@@ -122,7 +124,13 @@ class SubtitleHTTP:
                 406:'Quota de téléchargement atteint.',429:'Trop de requêtes. Réessayez plus tard.'}
             message=messages.get(error.code,'La source de sous-titres est indisponible.');error.close()
             raise SubtitleError(message) from None
-        except OSError:raise SubtitleError('Source inaccessible. Vérifiez la connexion puis réessayez.') from None
+        except OSError as error:
+            reason=getattr(error,'reason',error)
+            if isinstance(reason,socket.gaierror):message='Connexion impossible : le serveur n’a pas pu être trouvé (DNS).'
+            elif isinstance(reason,TimeoutError):message='Le serveur ne répond pas dans le délai prévu. Réessayez plus tard.'
+            elif isinstance(reason,ssl.SSLError):message='La connexion sécurisée au serveur a échoué (TLS / certificat).'
+            else:message='Source inaccessible. Vérifiez la connexion puis réessayez.'
+            raise SubtitleError(message) from None
         if len(data)>MAX_BYTES:raise SubtitleError('Réponse de sous-titres trop volumineuse.')
         return data
 
@@ -287,10 +295,17 @@ class SubtitleService:
         if SubliminalProvider.available():values['subliminal']=SubliminalProvider()
         return values
 
-    def search(self,query,enabled,cancel):
+    def search(self,query,enabled,cancel,progress=None):
         query=validate_query(query);providers=self.providers();rows=[];errors={}
         selected={k:v for k,v in providers.items() if k in enabled}
         if not selected:raise SubtitleError('Sélectionnez au moins une source disponible.')
+        pending=set(selected)
+        def snapshot():
+            unique={}
+            for row in rows:
+                if language_code(row['language'])!=query['language']:continue
+                unique[(row['provider'],row['id'],row['language'])]=row
+            return dict(rows=sorted(unique.values(),key=lambda r:(-r['score'],r['provider'],r['release']))[:240],errors=dict(errors))
         with ThreadPoolExecutor(max_workers=3,thread_name_prefix='tunplayer-subtitles') as pool:
             futures={pool.submit(p.search,query,cancel):k for k,p in selected.items()}
             for future in as_completed(futures):
@@ -299,12 +314,9 @@ class SubtitleService:
                 try:rows.extend(future.result())
                 except SubtitleError as error:errors[name]=str(error)
                 except Exception:errors[name]='Réponse de la source invalide ou indisponible.'
-        unique={}
-        for row in rows:
-            # A provider must never silently return another language.
-            if language_code(row['language'])!=query['language']:continue
-            unique[(row['provider'],row['id'],row['language'])]=row
-        return dict(rows=sorted(unique.values(),key=lambda r:(-r['score'],r['provider'],r['release']))[:240],errors=errors)
+                pending.discard(name)
+                if progress and not cancel.is_set():progress(dict(snapshot(),pending=sorted(pending)))
+        return snapshot()
 
     def download(self,row):
         provider=self.providers().get(row.get('provider'))

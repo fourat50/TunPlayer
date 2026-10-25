@@ -21,6 +21,21 @@ class SubDL:
 
     def __init__(self,http,settings):self.http=http;self.settings=dict(settings)
 
+    def connection(self):
+        """Validate the entered key against an authenticated account endpoint, not a title search."""
+        key=str(self.settings.get('subdl_api_key','')).strip()
+        if not key:raise SubtitleError('Saisissez votre clé API SubDL avant de tester la connexion.')
+        data=self.http.json('https://api.subdl.com/api/v2/me',headers={'Authorization':'Bearer '+key})
+        usage=data.get('usage');plan=data.get('plan')
+        if data.get('error') or data.get('status') is False or not isinstance(usage,dict) or not isinstance(plan,dict):
+            raise SubtitleError('SubDL n’a pas confirmé l’accès au compte avec cette clé.')
+        search=usage.get('search');downloads=usage.get('downloads')
+        if not isinstance(search,dict):raise SubtitleError('Réponse du compte SubDL invalide. Réessayez plus tard.')
+        def remaining(value):
+            result=value.get('remaining') if isinstance(value,dict) else None
+            return result if isinstance(result,int) and not isinstance(result,bool) and result>=0 else None
+        return dict(connected=True,search_remaining=remaining(search),download_remaining=remaining(downloads))
+
     def search(self,query,cancel):
         key=str(self.settings.get('subdl_api_key','')).strip()
         if not key:raise SubtitleError('Ajoutez votre clé SubDL dans les préférences des sous-titres.')

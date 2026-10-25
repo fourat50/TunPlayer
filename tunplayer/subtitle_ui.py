@@ -2,11 +2,27 @@
 from pathlib import Path
 import gi
 gi.require_version('Gtk','3.0')
-from gi.repository import Gtk
+from gi.repository import Gtk,GLib
 from .jobs import LatestTask
 from .subtitles import (SubtitleError,SubtitleService,SubtitleStore,OpenSubtitles,SubtitleHTTP,
                         PROVIDERS,media_query,validate_query,private_json,read_json)
 from .subtitle_languages import LANGUAGES
+
+
+def refresh_source_checks(checks,before,after):
+    """A newly entered API key must enable its source in an already open search."""
+    for name,key in (('opensubtitles','api_key'),('subdl','subdl_api_key')):
+        if name not in checks:continue
+        if not after.get(key):checks[name].set_active(False)
+        elif after.get(key)!=before.get(key):checks[name].set_active(True)
+
+
+def connection_message(result):
+    parts=['Clé SubDL validée · configuration enregistrée']
+    for key,caption in (('search_remaining','Recherches restantes'),('download_remaining','Téléchargements restants')):
+        value=result.get(key)
+        if value is not None:parts.append(f'{caption} : {value}'+(' (quota épuisé)' if value==0 else ''))
+    return '\n'.join(parts)
 
 
 class SubtitleMixin:
@@ -81,7 +97,7 @@ class SubtitleMixin:
             entry=Gtk.Entry();entry.set_placeholder_text(caption);entry.set_visibility(not secret);entry.set_text(str(settings.get(key,'')))
             entry.get_accessible().set_name(caption);entries[key]=entry;area.pack_start(entry,False,False,0)
         status=label('Compte mémorisé : '+str(settings.get('username','')) if settings.get('token') else 'Connexion facultative.','muted',True)
-        area.pack_start(status,False,False,0);task=LatestTask();self.subtitle_dialogs[dialog]=task
+        area.pack_start(status,False,False,0);task=LatestTask();subdl_task=LatestTask();self.subtitle_dialogs[dialog]=(task,subdl_task)
         def snapshot():
             value={k:entries[k].get_text().strip() for k in ('api_key','username','subdl_api_key')}
             if value['api_key']==settings.get('api_key') and value['username']==settings.get('username'):
@@ -115,15 +131,46 @@ class SubtitleMixin:
         subdl_key=Gtk.Entry();subdl_key.set_visibility(False);subdl_key.set_placeholder_text('Clé API SubDL')
         subdl_key.get_accessible().set_name('Clé API SubDL');subdl_key.set_text(str(settings.get('subdl_api_key','')))
         entries['subdl_api_key']=subdl_key;area.pack_start(subdl_key,False,False,0)
+        subdl_status=label('Connexion SubDL non vérifiée. Testez la clé pour confirmer l’accès au compte.','muted',True)
+        area.pack_start(subdl_status,False,False,0);verified=[None]
+        def key_changed(*_):
+            subdl_task.cancel();verified[0]=None;test_subdl.set_sensitive(True)
+            subdl_status.set_text('Clé modifiée : connexion à vérifier.')
+        def test_connection():
+            from .subtitle_subdl import SubDL
+            value=snapshot();key=value.get('subdl_api_key','')
+            if not key:subdl_status.set_text('Saisissez votre clé API SubDL.');return
+            test_subdl.set_sensitive(False);subdl_status.set_text('Vérification du compte SubDL…')
+            def done(result):
+                test_subdl.set_sensitive(True)
+                if subdl_key.get_text().strip()!=key:return
+                if save(snapshot()):verified[0]=key;subdl_status.set_text(connection_message(result))
+                else:subdl_status.set_text('Clé valide, mais la configuration n’a pas pu être enregistrée.')
+            def failed(error):
+                verified[0]=None;test_subdl.set_sensitive(True)
+                subdl_status.set_text('Échec du test : '+(str(error) if isinstance(error,SubtitleError) else 'Impossible de vérifier le compte.'))
+            subdl_task.submit(lambda cancel:SubDL(SubtitleHTTP(),value).connection(),done,failed)
+        test_subdl=button('Tester la connexion SubDL',test_connection,'ghost')
+        test_subdl.set_tooltip_text('Vérifie la clé auprès de SubDL et enregistre la configuration uniquement si le test réussit.')
+        area.pack_start(test_subdl,False,False,0);subdl_key.connect('changed',key_changed)
         from .subtitle_subliminal import SubliminalProvider
         area.pack_start(label('Podnapisi : disponible sans compte.\nSubliminal : '+('installé, sources supplémentaires disponibles.' if SubliminalProvider.available() else 'extension facultative absente ; les sources intégrées restent disponibles.'),'muted',True),False,False,0)
         dialog.set_default_size(600,620);dialog.show_all()
         try:
             while dialog.run()==Gtk.ResponseType.APPLY:
                 task.cancel();connect.set_sensitive(True)
-                if save(snapshot()):status.set_text('Configuration enregistrée. Les quotas et langues dépendent de chaque source.')
+                subdl_task.cancel();test_subdl.set_sensitive(True)
+                if save(snapshot()):
+                    status.set_text('Configuration enregistrée. Les quotas et langues dépendent de chaque source.')
+                    if verified[0]!=subdl_key.get_text().strip():subdl_status.set_text('Clé enregistrée ; utilisez le test pour vérifier la connexion.')
         finally:
-            task.close();self.subtitle_dialogs.pop(dialog,None);entries['password'].set_text('');dialog.destroy()
+            task.close();subdl_task.close();self.subtitle_dialogs.pop(dialog,None);entries['password'].set_text('');dialog.destroy()
+
+    def post_subtitle_progress(self,dialog,task,serial,callback,result):
+        def deliver():
+            if not self.closing and dialog in self.subtitle_dialogs and not task.closed and serial==task.serial:callback(result)
+            return False
+        GLib.idle_add(deliver)
 
     def search_subtitles(self):
         from .app import box,label,button
@@ -154,7 +201,13 @@ class SubtitleMixin:
             settings=read_json(self.subtitle_settings_path)
             check=Gtk.CheckButton(label=caption);check.set_active(key=='podnapisi' or key=='opensubtitles' and bool(settings.get('api_key')) or key=='subdl' and bool(settings.get('subdl_api_key')))
             check.set_sensitive(key in available);checks[key]=check;sources.pack_start(check,False,False,0)
-        sources.pack_start(button('Configurer',self.configure_subtitle_sources,'small'),False,False,0);area.pack_start(sources,False,False,0)
+        def configure_sources():
+            cancel_search();before=read_json(self.subtitle_settings_path)
+            self.configure_subtitle_sources()
+            refresh_source_checks(checks,before,read_json(self.subtitle_settings_path))
+            rows.clear();store.clear();download.set_sensitive(False)
+            status.set_text('Sources actualisées. Cliquez sur Rechercher pour utiliser la configuration enregistrée.')
+        sources.pack_start(button('Configurer',configure_sources,'small'),False,False,0);area.pack_start(sources,False,False,0)
         status=label('Choisissez une langue puis lancez la recherche. La correspondance est estimée, pas une garantie de synchronisation.','muted',True)
         area.pack_start(status,False,False,0);store=Gtk.ListStore(str,str,str,str,int)
         tree=Gtk.TreeView(model=store);tree.set_headers_visible(True)
@@ -164,49 +217,68 @@ class SubtitleMixin:
             if index==2:column.set_expand(True)
             tree.append_column(column)
         scroll=Gtk.ScrolledWindow();scroll.set_policy(Gtk.PolicyType.AUTOMATIC,Gtk.PolicyType.AUTOMATIC);scroll.add(tree);area.pack_start(scroll,True,True,0)
-        actions=box(spacing=12);busy=Gtk.Spinner();rows=[];task=LatestTask();self.subtitle_dialogs[dialog]=task;downloading=[False]
+        actions=box(spacing=12);busy=Gtk.Spinner();rows=[];task=LatestTask(workers=2);self.subtitle_dialogs[dialog]=(task,);downloading=[False]
         def fail(error):
-            busy.stop();downloading[0]=False;search.set_sensitive(True);download.set_sensitive(bool(rows))
+            busy.stop();downloading[0]=False;search.set_sensitive(True);cancel.set_sensitive(False);download.set_sensitive(bool(rows))
             status.set_text(str(error) if isinstance(error,SubtitleError) else 'Opération impossible. Réessayez ou choisissez une autre source.')
+        def paint(result):
+            selected=None;model,it=tree.get_selection().get_selected()
+            if it is not None:
+                old=rows[model[it][4]];selected=(old['provider'],old['id'],old['language'])
+            rows[:]=result['rows'];store.clear()
+            for index,row in enumerate(rows):
+                badges=(' · Malentendants' if row['hearing'] else '')+(' · Traduction automatique' if row['machine'] else '')
+                match='Titre concordant' if row['score']>=60 else 'À vérifier'
+                it=store.append([row['language'],row.get('source',PROVIDERS[row['provider']]),row['release']+badges,match,index])
+                if selected==(row['provider'],row['id'],row['language']):tree.get_selection().select_iter(it)
+            pending=result.get('pending',[])
+            errors=' · '.join(PROVIDERS[k]+' : '+v for k,v in result['errors'].items())
+            text=f'{len(rows)} résultat(s).'
+            if pending:text+=' Recherche en cours : '+', '.join(PROVIDERS[k] for k in pending)+'.'
+            elif not rows:text='Aucun résultat. Essayez le titre original ou une autre langue.'
+            status.set_text(text+(' '+errors if errors else ''));download.set_sensitive(bool(rows))
+            if not pending:busy.stop();search.set_sensitive(True);cancel.set_sensitive(False)
         def search_now():
+            if not search.get_sensitive():return
             if self.subtitle_context()!=context:status.set_text('Le contenu a changé. Fermez cette fenêtre et relancez la recherche.');return
             value=dict(query,title=title.get_text(),language=languages.get_active_id() or languages.get_child().get_text().strip().lower(),**{k:w.get_value_as_int() for k,w in numbers.items()})
             try:value=validate_query(value)
             except SubtitleError as error:status.set_text(str(error));return
             enabled=[k for k,w in checks.items() if w.get_active() and w.get_sensitive()]
+            if not enabled:status.set_text('Sélectionnez au moins une source de sous-titres.');return
             service=SubtitleService(read_json(self.subtitle_settings_path));rows.clear();store.clear();download.set_sensitive(False);busy.start()
+            search.set_sensitive(False);cancel.set_sensitive(True)
             status.set_text('Recherche dans les sources sélectionnées…');self.persist_setting('subtitle_language',value['language'])
-            def done(result):
-                busy.stop();rows.extend(result['rows'])
-                for index,row in enumerate(rows):
-                    badges=(' · Malentendants' if row['hearing'] else '')+(' · Traduction automatique' if row['machine'] else '')
-                    match='Titre concordant' if row['score']>=60 else 'À vérifier'
-                    store.append([row['language'],row.get('source',PROVIDERS[row['provider']]),row['release']+badges,match,index])
-                errors=' · '.join(PROVIDERS[k]+' : '+v for k,v in result['errors'].items())
-                status.set_text((f'{len(rows)} résultat(s).' if rows else 'Aucun résultat. Essayez le titre original ou une autre langue.')+(' '+errors if errors else ''))
-                download.set_sensitive(bool(rows))
-            task.submit(lambda cancel:service.search(value,enabled,cancel),done,fail)
+            serial=task.serial+1
+            def progress(result):self.post_subtitle_progress(dialog,task,serial,paint,result)
+            task.submit(lambda cancel:service.search(value,enabled,cancel,progress=progress),paint,fail)
+        def cancel_search():
+            task.cancel();busy.stop();downloading[0]=False;search.set_sensitive(True);cancel.set_sensitive(False)
+            download.set_sensitive(bool(rows));status.set_text('Opération annulée. Vous pouvez relancer la recherche.')
         def download_now(*_):
             if downloading[0]:return
             model,it=tree.get_selection().get_selected()
             if it is None:status.set_text('Sélectionnez un sous-titre dans la liste.');return
             row=rows[model[it][4]];service=SubtitleService(read_json(self.subtitle_settings_path))
-            downloading[0]=True;search.set_sensitive(False);download.set_sensitive(False);busy.start();status.set_text('Téléchargement du sous-titre…')
+            downloading[0]=True;search.set_sensitive(False);download.set_sensitive(False);cancel.set_sensitive(True);busy.start();status.set_text('Téléchargement du sous-titre…')
             def work(cancel):
                 data,filename=service.download(row)
                 if cancel.is_set():return None
                 return self.subtitle_store.save(context[0],row,data,filename)
             def done(path):
-                busy.stop();downloading[0]=False;search.set_sensitive(True);download.set_sensitive(True)
+                busy.stop();downloading[0]=False;search.set_sensitive(True);download.set_sensitive(True);cancel.set_sensitive(False)
                 if path and self.activate_subtitle(context,path):status.set_text('Sous-titre téléchargé et activé. Il sera proposé automatiquement à la prochaine lecture.')
                 else:status.set_text('Sous-titre conservé localement. Le contenu a changé ou n’est plus disponible pour activation.')
             task.submit(work,done,fail)
         search=button('Rechercher',search_now,'ghost',symbol='search');download=button('Télécharger et activer',download_now,'primary',symbol='download')
-        download.set_sensitive(False);actions.pack_start(search,False,False,0);actions.pack_start(download,False,False,0);actions.pack_start(busy,False,False,0)
+        cancel=button('Annuler',cancel_search,'small');cancel.set_sensitive(False)
+        download.set_sensitive(False);actions.pack_start(search,False,False,0);actions.pack_start(download,False,False,0);actions.pack_start(cancel,False,False,0);actions.pack_start(busy,False,False,0)
         tree.connect('row-activated',download_now);title.connect('activate',lambda _:search_now());area.pack_start(actions,False,False,0)
         dialog.show_all()
         try:dialog.run()
         finally:task.close();self.subtitle_dialogs.pop(dialog,None);dialog.destroy();self.player_activity()
 
     def close_subtitle_dialogs(self):
-        for dialog,task in list(self.subtitle_dialogs.items()):task.close();dialog.response(Gtk.ResponseType.CLOSE)
+        for dialog,tasks in list(self.subtitle_dialogs.items()):
+            for task in tasks:task.close()
+            dialog.response(Gtk.ResponseType.CLOSE)

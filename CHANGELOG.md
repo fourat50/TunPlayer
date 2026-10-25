@@ -1,5 +1,14 @@
 # Historique
 
+## 1.5.1
+
+- Source SubDL activée immédiatement lorsqu’une clé est ajoutée depuis une fenêtre de recherche déjà ouverte.
+- Résultats affichés au fur et à mesure de la réponse des sources, sans attendre un autre fournisseur lent ; progression explicite et bouton Annuler.
+- Test de connexion SubDL sur l’endpoint authentifié du compte, avec affichage des quotas de recherche et de téléchargement lorsqu’ils sont renseignés.
+- Après un test réussi, configuration enregistrée ; une clé modifiée pendant le test invalide l’ancien résultat.
+- Erreurs DNS, délai de réponse, TLS et authentification distinguées ; aucune erreur réseau ne valide une connexion.
+- Tests des boutons et parcours de dialogue avec widgets simulés, des réponses du compte, du rendu progressif et de l’annulation des mises à jour dépassées.
+
 ## 1.5.0
 
 - Source SubDL ajoutée à la recherche de sous-titres de films et d’épisodes, avec clé API personnelle indépendante d’OpenSubtitles.com.
