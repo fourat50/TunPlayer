@@ -44,7 +44,8 @@ def main():
         if run('git','status','--porcelain',cwd=folder):raise RuntimeError('Modifications non commitées : '+str(folder))
         if run('git','remote','get-url','origin',cwd=folder)!='https://github.com/'+repo+'.git':
             raise RuntimeError('Dépôt origin inattendu : '+str(folder))
-    if (LINUX/'packaging/windows').exists():raise RuntimeError('Recette Windows trouvée dans le projet Linux.')
+    if run('git','ls-files','packaging/windows'):
+        raise RuntimeError('Recette Windows suivie dans le dépôt Linux.')
     run('gh','auth','status')
     for folder,repo,description in (
         (LINUX,LINUX_REPO,'TunPlayer pour Linux : lecteur IPTV, films, séries et radios. Paquets .deb et archives autonomes.'),
