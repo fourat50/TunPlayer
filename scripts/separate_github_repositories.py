@@ -62,7 +62,7 @@ def main():
         if info['default_branch']!='main':raise RuntimeError('Branche principale non confirmée : '+repo)
     if remote_ref(LINUX_REPO,OLD_BRANCH):raise RuntimeError('La branche Windows est encore présente dans Linux.')
     print('Séparation terminée. L’historique de la branche Windows est conservé dans le dépôt Windows.')
-    print('Le nouvel installateur doit maintenant être construit avec scripts/build_windows_cloud.py dans TunPlayer Win.')
+    print('Pour publier l’installateur Windows validé : scripts/publish_windows_release.py --cloud dans TunPlayer Win.')
 
 
 if __name__=='__main__':
