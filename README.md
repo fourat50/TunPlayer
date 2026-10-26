@@ -2,7 +2,7 @@
 
 Lecteur IPTV de bureau, développé d’abord pour Linux. Interface française graphite et citron vert, panorama vectoriel original, cartes illustrées et bibliothèque locale. Projet inspiré des usages d’[UHF](https://getuhf.com/), avec une identité et une implémentation propres.
 
-**Version 1.5.4 : correction des liens SubDL authentifiés qui empêchaient l’affichage des résultats, diagnostic et validation du téléchargement. OpenSubtitles.com, Podnapisi, catégories protégées par PIN et distribution autonome Linux.**
+**Version 1.6.0 : informations des sources, expiration des abonnements dans le menu, actualisation directe et nouveau logo vectoriel. Sous-titres SubDL / OpenSubtitles, radios et distribution autonome Linux.**
 
 ## Démarrer sous Linux
 
@@ -480,3 +480,11 @@ La configuration d’intégration suit les options `wid`, `vo`, `gpu-context` et
 La console masquée ne réserve aucun espace sous la vidéo. Les messages de reconnexion et d’épisode suivant partagent un emplacement [Gtk.Stack à taille homogène](https://docs.gtk.org/gtk3/class.Stack.html) dans la console visible. Le panneau utilise [Gtk.Paned](https://docs.gtk.org/gtk3/class.Paned.html) et respecte ses limites natives. La session graphique étant inaccessible au bac à sable, les assertions de dimensions et les captures du parcours graphique restent à exécuter depuis le bureau Linux.
 
 L’empaquetage utilise [dpkg-deb](https://manpages.debian.org/bookworm/dpkg/dpkg-deb.1.en.html). La publication suit les commandes officielles [gh release create](https://cli.github.com/manual/gh_release_create) et [gh release upload](https://cli.github.com/manual/gh_release_upload).
+
+### Sources et abonnements (1.6.0)
+
+Le bouton **Actualiser** de l’en-tête actualise la source filtrée, ou propose de choisir si plusieurs sources sont connectées. **Mes sources → Ajouter une source** reste le point d’ajout, également accessible depuis **Préférences → Sources & abonnements**.
+
+Les préférences présentent le type de source, le serveur ou fichier (sans URL contenant les secrets), l’identifiant Xtream, l’état du compte, les dates de création et d’expiration, la formule, les connexions actives / autorisées, les formats, le fuseau fournisseur et les quantités du catalogue local. Les dates sont affichées dans le fuseau local de l’ordinateur. La date de fin figure aussi dans la navigation et l’en-tête ; une échéance à moins de sept jours est signalée.
+
+Les données viennent de l’API de compte Xtream, y compris pour une playlist basée sur `get.php` avec identifiants. Voir le [contrat de l’API de compte](https://github.com/worldofiptvcom/xtream-codes-api/blob/master/docs/player-api/user-info.md). Une playlist ordinaire ne fournit généralement pas de date de fin : TunPlayer affiche alors « Non communiquée par la source ». Une réponse explicitement sans échéance affiche « Sans date limite ». La vérification se fait en arrière-plan au démarrage si le dernier contrôle date de plus de six heures, pendant l’import / actualisation, ou avec **Vérifier les abonnements**. Après une panne, les dernières informations vérifiées restent consultables, avec indication de l’échec. Les connexions affichées correspondent au dernier contrôle, sans interrogation permanente du fournisseur.

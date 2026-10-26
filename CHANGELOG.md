@@ -1,5 +1,14 @@
 # Historique
 
+## 1.6.0
+
+- Informations des sources et abonnements dans Préférences et Mes sources : type, serveur sans secrets, identifiant, statut, date de fin / création, formule, connexions, formats, fuseau, catalogue et dates de vérification.
+- Expiration visible dans le menu principal et l’en-tête, avec indication des abonnements expirés ou proches de leur échéance.
+- Lecture des comptes Xtream et des playlists M3U basées sur `get.php`, vérification en arrière-plan au démarrage (cache de six heures), conservation de la dernière réponse vérifiée en cas de panne et bouton de vérification manuelle.
+- Bouton principal Actualiser avec sélection de la source si nécessaire ; ajout / modification conservés dans Mes sources, accessible depuis Préférences.
+- Nouveau logo vectoriel original, monogramme T et lecture, finition graphite / menthe et nom TunPlayer avec typographie moderne.
+- Migration additive du profil ; réponses de compte dépassées ignorées si les identifiants de connexion ont changé.
+
 ## 1.5.4
 
 - Correction démontrée par le diagnostic réel : les liens SubDL contenant `?api_key=…` étaient tous rejetés, malgré une réponse de recherche valide (64 fichiers reçus pour Inception, 10 pour le contenu récent du profil).

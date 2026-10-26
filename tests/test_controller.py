@@ -307,4 +307,43 @@ class Controller(unittest.TestCase):
         self.app.resume_prompt_open=False;now[0]=34.9;self.app.check_player_idle();self.assertTrue(self.app.controls_visible)
         now[0]=35;self.app.check_player_idle();self.assertFalse(self.app.controls_visible)
 
+    def test_source_account_is_imported_and_refreshed_off_the_gtk_thread(self):
+        import threading
+        from tunplayer.source_info import normalize_account
+        main_thread=threading.get_ident();threads=[]
+        config={'type':'xtream','server':'https://example.org','username':'test','password':'secret'}
+        rows=[dict(name='News',group_name='Infos',url='https://example.org/live/1.ts',kind='live',tvg_id='',logo='')]
+        def account(*args):
+            threads.append(threading.get_ident())
+            return normalize_account({'user_info':{'auth':1,'status':'Active','exp_date':'1900000000'}})
+        with patch('tunplayer.app.load_source',return_value=rows),patch('tunplayer.app.fetch_account',side_effect=account):
+            self.app.source_job('Compte',config)
+            self.wait(lambda:not self.app.busy)
+            source=self.app.library.sources()[0]
+            self.assertEqual(self.app.library.source_account(source['id'])['expires_at'],1900000000)
+            self.app.refresh_source(source);self.wait(lambda:not self.app.busy)
+        self.assertEqual(len(threads),2);self.assertTrue(all(t!=main_thread for t in threads))
+
+    def test_background_account_check_preserves_catalog_and_ignores_changed_credentials(self):
+        import threading
+        identity=self.app.library.import_channels('Compte',[dict(name='News',group_name='Infos',url='https://example.org/live/1.ts',kind='live',tvg_id='',logo='')],
+            config={'type':'xtream','server':'https://example.org','username':'test','password':'secret'})
+        started=threading.Event();proceed=threading.Event()
+        def fetch(*args):
+            started.set();proceed.wait(3)
+            return {'expires_at':1900000000,'checked_at':100}
+        try:
+            with patch('tunplayer.source_ui.fetch_account',side_effect=fetch):
+                self.app.refresh_source_accounts()
+                self.assertTrue(started.wait(2))
+                self.assertFalse(self.app.busy)
+                with self.app.library.db:
+                    self.app.library.db.execute('UPDATE sources SET config=? WHERE id=?',('{"type":"m3u","location":"/tmp/other.m3u"}',identity))
+                proceed.set();self.wait(lambda:not self.app.source_accounts_loading)
+            self.assertEqual(self.app.library.source_account(identity),{})
+            self.assertEqual(len(self.app.library.channels()),1)
+        finally:
+            proceed.set()
+            self.app.source_account_tasks.close()
+
 if __name__=='__main__':unittest.main()

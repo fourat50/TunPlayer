@@ -15,7 +15,7 @@ if sys.platform.startswith('linux'):
     os.environ['GDK_BACKEND']='x11'
 import gi
 gi.require_version('Gtk', '3.0')
-from gi.repository import Gtk, Gdk, GLib, Gio
+from gi.repository import Gtk, Gdk, GLib, Gio, GdkPixbuf
 from .core import Library, SourceError, load_source, load_series, load_series_catalog, load_vod_details, parse_xmltv, read_resource
 from .player import Player
 from . import __version__
@@ -32,6 +32,8 @@ from .download_ui import DownloadMixin
 from .access_ui import AccessMixin
 from .interactions import InteractionMixin
 from .subtitle_ui import SubtitleMixin
+from .source_ui import SourceMixin
+from .source_info import fetch_account,subscription
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -78,7 +80,7 @@ def navigation(text, symbol, callback):
     w.get_accessible().set_name(text)
     return w
 
-class App(SubtitleMixin,AccessMixin,InteractionMixin,DownloadMixin,RadioMixin,Gtk.Application):
+class App(SourceMixin,SubtitleMixin,AccessMixin,InteractionMixin,DownloadMixin,RadioMixin,Gtk.Application):
     def __init__(self, args):
         super().__init__(application_id='tn.tunplayer.desktop', flags=Gio.ApplicationFlags.NON_UNIQUE if args.data_dir else Gio.ApplicationFlags.FLAGS_NONE)
         self.args = args
@@ -169,9 +171,9 @@ class App(SubtitleMixin,AccessMixin,InteractionMixin,DownloadMixin,RadioMixin,Gt
         self.sidebar_scroll.set_shadow_type(Gtk.ShadowType.NONE);self.sidebar_scroll.add(self.sidebar)
         body.pack_start(self.sidebar_scroll,False,False,0)
         branding = box(spacing=10)
-        brand_icon=box(css='brand-icon'); brand_icon.pack_start(icon('play',22,'#19240e'),False,False,0)
+        brand_icon=box(css='brand-icon'); brand_icon.pack_start(Gtk.Image.new_from_pixbuf(GdkPixbuf.Pixbuf.new_from_file_at_scale(str(ROOT/'assets/tunplayer.svg'),42,42,True)),False,False,0)
         branding.pack_start(brand_icon,False,False,0)
-        self.brand_title=label('tunplayer','brand');branding.pack_start(self.brand_title,False,False,0)
+        self.brand_title=label('TunPlayer','brand');self.brand_title.set_markup('Tun<span foreground="#bdeca0">Player</span>');branding.pack_start(self.brand_title,False,False,0)
         self.sidebar.pack_start(branding,False,False,0)
         subtitle = label('VOTRE MONDE À L’ÉCRAN','caption'); subtitle.set_margin_top(12); subtitle.set_margin_bottom(28)
         self.sidebar.pack_start(subtitle,False,False,0)
@@ -193,9 +195,10 @@ class App(SubtitleMixin,AccessMixin,InteractionMixin,DownloadMixin,RadioMixin,Gt
         spacer = Gtk.Box(); self.sidebar.pack_start(spacer,True,True,0)
         state = box(True,10,'source-status')
         state_top=box(spacing=8);state_top.pack_start(icon('shield',16,'#c4f478'),False,False,0)
-        state_top.pack_start(label('Juste vous. Et vos envies.','muted'),False,False,0)
+        state_top.pack_start(label('ABONNEMENTS','caption'),False,False,0)
         state.pack_start(state_top,False,False,0)
-        state.pack_start(label('Votre bibliothèque privée,\ntoujours à portée de clic.','muted'),False,False,0)
+        self.subscription_list=box(True,14)
+        state.pack_start(self.subscription_list,False,False,0)
         self.sidebar.pack_start(state,False,False,0)
         version = label(f'TunPlayer  /  {__version__}','muted'); version.set_margin_top(16); self.sidebar.pack_start(version,False,False,0)
         self.sidebar_extras.extend([state,version])
@@ -210,7 +213,8 @@ class App(SubtitleMixin,AccessMixin,InteractionMixin,DownloadMixin,RadioMixin,Gt
         self.search = Gtk.SearchEntry(); self.search.set_placeholder_text('Chaîne, film ou série…'); self.search.get_style_context().add_class('search')
         self.search.set_tooltip_text('Rechercher dans votre bibliothèque · Ctrl + K')
         self.search.connect('search-changed',self.search_changed); header.pack_start(self.search,False,False,0)
-        self.add_button = button('Ajouter une source',self.add_source,'primary',symbol='plus'); header.pack_start(self.add_button,False,False,0)
+        self.subscription_label=label('','subscription-header');titles.pack_start(self.subscription_label,False,False,0)
+        self.add_button = button('Actualiser',self.refresh_main_source,'primary',symbol='refresh',tooltip='Actualiser le catalogue de la source sélectionnée'); header.pack_start(self.add_button,False,False,0)
         self.toast_label = label('','toast'); right.pack_start(self.toast_label,False,False,0)
         self.scroll = Gtk.ScrolledWindow(); self.scroll.set_policy(Gtk.PolicyType.NEVER,Gtk.PolicyType.AUTOMATIC)
         self.scroll.connect('scroll-event',self.catalog_scroll_event)
@@ -410,6 +414,8 @@ class App(SubtitleMixin,AccessMixin,InteractionMixin,DownloadMixin,RadioMixin,Gt
         self.bottom.pack_start(label('M3U · XTREAM · XMLTV','caption'),False,False,0)
         self.window.show_all();self.player_info_stack.set_visible_child_name('identity')
         self.apply_sidebar(); self.toast_label.hide(); self.playback.hide(); self.return_button.hide(); self.navigate('home')
+        GLib.idle_add(self.refresh_source_accounts,True)
+        self.source_status_timer=GLib.timeout_add_seconds(60,self.source_status_tick)
         GLib.timeout_add(100,self.tick)
         self.idle_timer=GLib.timeout_add(100,self.check_player_idle)
         self.download_timer=GLib.timeout_add(500,self.download_tick)
@@ -472,6 +478,7 @@ class App(SubtitleMixin,AccessMixin,InteractionMixin,DownloadMixin,RadioMixin,Gt
         if view in ('live','movie','series','favorites','history','radio') and hasattr(self.workspace,'set_position'):
             self.workspace.set_position(self.category_width)
         self.return_button.set_visible(self.current is not None and view != 'player')
+        self.update_source_status()
         if view!='player': self.render()
         else:
             self.render_generation+=1;self.catalog_tasks.cancel()
@@ -572,6 +579,7 @@ class App(SubtitleMixin,AccessMixin,InteractionMixin,DownloadMixin,RadioMixin,Gt
             discovery=self.view=='home')
 
     def render(self,delay=70):
+        self.update_source_status()
         self.remember_catalog_position();self.catalog_ready=False
         self.render_generation+=1;generation=self.render_generation
         self.catalog_tasks.cancel()
@@ -1220,14 +1228,19 @@ class App(SubtitleMixin,AccessMixin,InteractionMixin,DownloadMixin,RadioMixin,Gt
 
     def source_job(self, name, config, source=None):
         self.save_position()
+        previous=self.library.source_account(source['id']) if source and self.library.source_config(source['id'])==config else None
         def work():
             channels=load_source(config)
+            account=fetch_account(config,previous)
             # A separate connection keeps SQLite work off the GTK event loop.
             library=Library(self.library.path,migrate=False)
             try:
                 if source is not None:
-                    return library.refresh_source(source['id'],channels,config=config,name=name)
+                    result=library.refresh_source(source['id'],channels,config=config,name=name)
+                    library.save_source_account(source['id'],account,config)
+                    return result
                 identity=library.import_channels(name,channels,config=config)
+                library.save_source_account(identity,account,config)
                 return {'total':library.channel_count(source_id=identity)}
             finally:
                 library.close()
@@ -1291,7 +1304,10 @@ class App(SubtitleMixin,AccessMixin,InteractionMixin,DownloadMixin,RadioMixin,Gt
         if path: entry.set_text(path)
 
     def render_sources(self):
-        self.content.pack_start(label('Une place pour toutes vos playlists.','section-title'),False,False,0)
+        top=box(spacing=12);top.pack_start(label('Sources & abonnements','section-title'),True,True,0)
+        top.pack_start(button('Ajouter une source',self.add_source,'primary',symbol='plus'),False,False,0)
+        self.content.pack_start(top,False,False,0)
+        self.content.pack_start(button('Vérifier les abonnements',self.refresh_source_accounts,'ghost',symbol='refresh'),False,False,0)
         for source in self.library.sources():
             row=box(True,14,'panel')
             heading=box(spacing=14)
@@ -1302,6 +1318,9 @@ class App(SubtitleMixin,AccessMixin,InteractionMixin,DownloadMixin,RadioMixin,Gt
             row.pack_start(heading,False,False,0)
             date=datetime.fromtimestamp(source['updated_at']).strftime('%d/%m/%Y à %H:%M') if source['updated_at'] else 'version précédente'
             row.pack_start(label(f'Dernière mise à jour : {date}','muted'),False,False,0)
+            text,style=subscription(self.library.source_account(source['id']))
+            row.pack_start(label(text,'subscription-'+style),False,False,0)
+            row.pack_start(self.source_information(source),False,False,0)
             actions=box(spacing=10)
             actions.pack_start(button('Actualiser' if source['refreshable'] else 'Reconnecter',lambda s=source:self.refresh_source(s),'primary',symbol='refresh'),False,False,0)
             actions.pack_start(button('Modifier',lambda s=source:self.add_source(s),'ghost',symbol='edit'),False,False,0)
@@ -1370,6 +1389,7 @@ class App(SubtitleMixin,AccessMixin,InteractionMixin,DownloadMixin,RadioMixin,Gt
 
     def render_settings(self):
         self.content.pack_start(label('Faites comme chez vous.','section-title'),False,False,0)
+        self.content.pack_start(self.source_settings_panel(),False,False,0)
         self.content.pack_start(self.security_settings(),False,False,0)
         self.content.pack_start(self.subtitle_settings_panel(),False,False,0)
         automation=box(True,12,'panel')
@@ -2234,6 +2254,8 @@ class App(SubtitleMixin,AccessMixin,InteractionMixin,DownloadMixin,RadioMixin,Gt
         self.save_position(); self.stop_record()
         self.reconnect.cancel();self.cancel_next();self.accepting_load=False
         self.catalog_tasks.close();self.detail_tasks.close()
+        if hasattr(self,'source_account_tasks'):self.source_account_tasks.close()
+        if getattr(self,'source_status_timer',None):GLib.source_remove(self.source_status_timer);self.source_status_timer=None
         self.radio_tasks.close();self.radio_facets_tasks.close()
         if self.render_timer:GLib.source_remove(self.render_timer);self.render_timer=None
         if self.paint_timer:GLib.source_remove(self.paint_timer);self.paint_timer=None

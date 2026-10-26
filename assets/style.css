@@ -2,8 +2,8 @@
 * { font-family: 'Ubuntu', 'Segoe UI', sans-serif; font-size: 13px; }
 window { background: #0d1015; color: #edf0f3; }
 .sidebar { background: #11151b; border-right: 1px solid #23282f; padding: 28px 16px 16px; }
-.brand { color: #f3f5ed; font-size: 24px; font-weight: 800; letter-spacing: -1px; }
-.brand-icon { background: #c4f478; color: #19240e; border-radius: 12px; padding: 9px; }
+.brand { color: #f1f7ef; font-family: "Inter", "DejaVu Sans", sans-serif; font-size: 20px; font-weight: 700; letter-spacing: -0.8px; }
+.brand-icon { background: transparent; border-radius: 12px; padding: 0; }
 .caption { color: #929ba8; font-size: 10px; font-weight: 700; letter-spacing: 1.4px; }
 .sidebar .caption { font-size: 9px; color: #7e8998; }
 .muted { color: #9da7b6; font-size: 12px; }
@@ -189,7 +189,7 @@ checkbutton:disabled { opacity: 0.4; }
 /* Persistent navigation rail and a virtualized, searchable category menu. */
 .sidebar.compact { padding: 24px 10px 16px; }
 .sidebar.compact .nav { padding: 11px 10px; border-radius: 10px; }
-.sidebar.compact .brand-icon { padding: 8px; }
+.sidebar.compact .brand-icon { padding: 0; }
 .category-panel { background: #111820; border-right: 1px solid #28323f; padding: 24px 12px 14px; }
 .category-panel entry { min-width: 0; font-size: 11px; padding: 8px; }
 .category-list { background: #111820; color: #aab8c8; font-size: 11px; border: none; }
@@ -213,3 +213,11 @@ checkbutton:disabled { opacity: 0.4; }
 .radio-card:hover { border-color: #8eae62; background: #202a32; }
 .radio-stage { background: #141d22; padding: 32px; }
 .radio-stage-title { font-size: 32px; font-weight: bold; color: #f0f4ea; }
+
+/* Account information stays legible in the expanded navigation. */
+.subscription-name { color: #e6eee6; font-size: 12px; font-weight: 600; }
+.subscription-active { color: #bdeca0; font-size: 12px; }
+.subscription-soon { color: #f3ca83; font-size: 12px; }
+.subscription-expired { color: #f09595; font-size: 12px; }
+.subscription-unknown { color: #9da7b6; font-size: 12px; }
+.subscription-header { color: #b6c5b6; font-size: 11px; }

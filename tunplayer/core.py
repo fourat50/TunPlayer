@@ -69,7 +69,9 @@ def request_xtream(config, action, **parameters):
     server=config['server'].rstrip('/')
     if urllib.parse.urlsplit(server).scheme not in ('http','https'):
         raise SourceError('Le serveur doit commencer par http:// ou https://.')
-    query=urllib.parse.urlencode(dict(username=config['username'],password=config['password'],action=action,**parameters))
+    params=dict(username=config['username'],password=config['password'],**parameters)
+    if action is not None:params['action']=action
+    query=urllib.parse.urlencode(params)
     return json.loads(read_resource(f'{server}/player_api.php?{query}'))
 
 
@@ -257,7 +259,7 @@ class Library:
         ''')
         # Additive migration: existing libraries keep identifiers and viewing state.
         catalog_migration='quality' not in {r['name'] for r in self.db.execute('PRAGMA table_info(channels)')}
-        migrations = {'sources': {'config': "TEXT NOT NULL DEFAULT '{}'", 'updated_at': 'REAL NOT NULL DEFAULT 0', 'series_checked': 'REAL NOT NULL DEFAULT 0'},
+        migrations = {'sources': {'config': "TEXT NOT NULL DEFAULT '{}'", 'account': "TEXT NOT NULL DEFAULT '{}'", 'updated_at': 'REAL NOT NULL DEFAULT 0', 'series_checked': 'REAL NOT NULL DEFAULT 0'},
                       'channels': {'provider_id': "TEXT NOT NULL DEFAULT ''", 'search_name': 'TEXT', 'search_group': 'TEXT',
                           'genre': "TEXT NOT NULL DEFAULT ''", 'year': 'INTEGER NOT NULL DEFAULT 0',
                           'rating': 'REAL NOT NULL DEFAULT 0', 'added': 'REAL NOT NULL DEFAULT 0',
@@ -556,6 +558,21 @@ class Library:
         if not row:
             raise SourceError('Cette source n’existe plus.')
         return json.loads(row[0])
+
+    def source_account(self, identity):
+        row=self.db.execute('SELECT account FROM sources WHERE id=?',(identity,)).fetchone()
+        return json.loads(row[0]) if row else {}
+
+    def save_source_account(self,identity,account,expected_config):
+        with self.db:
+            row=self.db.execute('SELECT config FROM sources WHERE id=?',(identity,)).fetchone()
+            if row and json.loads(row[0])==expected_config:
+                self.db.execute('UPDATE sources SET account=? WHERE id=?',(json.dumps(account),identity))
+                return True
+        return False
+
+    def source_counts(self,identity):
+        return dict(self.db.execute('SELECT kind,COUNT(*) FROM channels WHERE source_id=? GROUP BY kind',(identity,)))
 
     def delete_source(self, identity):
         with self.db:
