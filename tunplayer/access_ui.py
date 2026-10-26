@@ -9,7 +9,7 @@ class AccessMixin:
     def category_tooltip(self,tree,x,y,keyboard,tooltip):
         context=tree.get_tooltip_context(x,y,keyboard)
         if not context or not context[0]:return False
-        _,model,path,it=context
+        _,_x,_y,model,path,it=context
         tooltip.set_text(model[it][0])
         tree.set_tooltip_row(tooltip,path)
         return True

@@ -380,9 +380,18 @@ class Controller(unittest.TestCase):
 
     def test_category_tooltip_uses_literal_text_with_ampersands(self):
         values=[];rows=[]
-        tree=SimpleNamespace(get_tooltip_context=lambda *a:(True,[['4K MAFIA & GANGSTER [EN]']],[0],0),set_tooltip_row=lambda tip,path:rows.append(path))
+        # Build the tuple from the installed typelib, including GTK's INOUT x/y.
+        # A four-value widget mock concealed the original binding mismatch.
+        from gi.repository import Gtk
+        output_names=[arg.get_name() for arg in Gtk.TreeView.get_tooltip_context.get_arguments() if int(arg.get_direction()) in (1,2)]
+        output={'x':20,'y':30,'model':[['4K MAFIA & GANGSTER [EN]']],'path':[0],'iter':0}
+        context=(True,*(output[name] for name in output_names))
+        self.assertEqual(len(context),6)
+        tree=SimpleNamespace(get_tooltip_context=lambda *a:context,set_tooltip_row=lambda tip,path:rows.append(path))
         tip=SimpleNamespace(set_text=values.append)
         self.assertTrue(self.app.category_tooltip(tree,0,0,False,tip))
         self.assertEqual(values,['4K MAFIA & GANGSTER [EN]']);self.assertEqual(rows,[[0]])
+        tree.get_tooltip_context=lambda *a:(False,20,30,None,None,None)
+        self.assertFalse(self.app.category_tooltip(tree,20,30,False,tip))
 
 if __name__=='__main__':unittest.main()

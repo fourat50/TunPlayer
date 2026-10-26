@@ -47,11 +47,25 @@ def main():
                     print(f'  Appel lent : {name} · {duration:.3f} s',flush=True);save()
                 if name=='tick' and session is not None and self.media_loaded and 'loaded_s' not in session:
                     session['loaded_s']=round(time.monotonic()-start,4)
+                    loads=[p for p in session['phases'] if p['name']=='load_current_stream']
+                    if loads:session['loaded_from_open_s']=round(session['loaded_s']-loads[-1]['at_s'],4)
                     print(f'  Média chargé en {session["loaded_s"]:.3f} s',flush=True);save()
                 if name=='tick' and session is not None and self.media_loaded and self.position>0 and 'playing_s' not in session:
                     session['playing_s']=round(time.monotonic()-start,4);save()
         setattr(module.App,name,measured)
-    for name in ('configure_player_browser','update_player_identity','navigate','open_current_stream','load_current_stream','ensure_player','tick','update_source_status','open_series','open_details'):
+    original_failure=module.App.handle_playback_failure
+    def failure(self,message):
+        if active is not None:
+            code=None
+            if self.player and hasattr(self.player,'lib'):
+                for candidate in range(-1,-21,-1):
+                    text=self.player.lib.mpv_error_string(candidate)
+                    if text and text.decode('utf-8',errors='replace')==message:code=candidate;break
+            active.setdefault('failures',[]).append({'at_s':round(time.monotonic()-start,4),'mpv_error_code':code})
+            save()
+        return original_failure(self,message)
+    module.App.handle_playback_failure=failure
+    for name in ('configure_player_browser','update_player_identity','navigate','open_current_stream','load_current_stream','ensure_player','tick','update_source_status','open_series','open_details','choose_resume'):
         if hasattr(module.App,name):wrap(name)
     print(f'Diagnostic de lecture · TunPlayer {__version__}',flush=True)
     print('Ouvrez une chaîne, un film, puis un épisode ; fermez ensuite TunPlayer.',flush=True)
