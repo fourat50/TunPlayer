@@ -1,8 +1,12 @@
-# TunPlayer
+# TunPlayer — Linux
 
-Lecteur IPTV de bureau, développé d’abord pour Linux. Interface française graphite et citron vert, panorama vectoriel original, cartes illustrées et bibliothèque locale. Projet inspiré des usages d’[UHF](https://getuhf.com/), avec une identité et une implémentation propres.
+Lecteur IPTV de bureau, pour Linux. Interface française graphite et citron vert, panorama vectoriel original, cartes illustrées et bibliothèque locale. Projet inspiré des usages d’[UHF](https://getuhf.com/), avec une identité et une implémentation propres.
 
 **Version 1.6.1 : lecteur suivi par événements pour éviter les blocages, démarrage du direct optimisé et vérification des abonnements indépendante de l’import.**
+
+Ce dépôt contient le code et les paquets **Linux** (`.deb` et archive autonome).
+La version Windows, son installateur et ses releases sont maintenus dans
+[TunPlayer-for-Windows](https://github.com/fourat50/TunPlayer-for-Windows).
 
 ## Démarrer sous Linux
 
@@ -436,9 +440,11 @@ Il utilise un profil temporaire avec 125 chaînes, six films, une série et deux
 - `scripts/benchmark_library.py` : mesures reproductibles sur une bibliothèque temporaire.
 - `scripts/benchmark_responsiveness.py` : mesure de la boucle GLib pendant les requêtes d’un catalogue synthétique.
 
-## Windows et étapes suivantes
+## Évolutions Linux
 
-Le stockage, les parseurs et la liaison mpv sont séparés de l’interface pour permettre le portage. GTK 3 existe sous Windows via MSYS2 ; il faudra fournir Python / PyGObject, le runtime GTK, `mpv-2.dll` et FFmpeg. L’intégration vidéo actuelle utilise un identifiant X11 sous Linux. Sous Windows, l’intégration native, l’installateur et les tests restent à réaliser. Cette version refuse la lecture graphique sur un système sans intégration native disponible, au lieu d’ouvrir une fenêtre vidéo séparée. Aucun exécutable Windows n’est livré dans cette version.
+Le lecteur de ce dépôt utilise l’intégration X11 / XWayland. Les adaptations Win32,
+les workflows Windows et les exécutables `.exe` appartiennent exclusivement au
+[dépôt Windows](https://github.com/fourat50/TunPlayer-for-Windows).
 
 Travail restant pour couvrir les usages avancés de la référence :
 
@@ -449,7 +455,7 @@ Travail restant pour couvrir les usages avancés de la référence :
 - enregistrements planifiés avec reprise après redémarrage ;
 - contrôle parental, cast, intégrations Jellyfin / Plex / Emby et Trakt ;
 - synchronisation optionnelle, gestion sécurisée des secrets et VPN ;
-- paquet Linux distribuable puis portage et installateur Windows.
+- élargissement des distributions Linux testées pour le paquet autonome.
 
 Aucune promesse de Dolby, HDR, DRM ou performance supérieure à UHF n’est faite sans validation sur le matériel et les flux concernés.
 
