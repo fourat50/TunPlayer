@@ -2,7 +2,7 @@
 
 Lecteur IPTV de bureau, développé d’abord pour Linux. Interface française graphite et citron vert, panorama vectoriel original, cartes illustrées et bibliothèque locale. Projet inspiré des usages d’[UHF](https://getuhf.com/), avec une identité et une implémentation propres.
 
-**Version 1.6.0 : informations des sources, expiration des abonnements dans le menu, actualisation directe et nouveau logo vectoriel. Sous-titres SubDL / OpenSubtitles, radios et distribution autonome Linux.**
+**Version 1.6.1 : lecteur suivi par événements pour éviter les blocages, démarrage du direct optimisé et vérification des abonnements indépendante de l’import.**
 
 ## Démarrer sous Linux
 
@@ -488,3 +488,9 @@ Le bouton **Actualiser** de l’en-tête actualise la source filtrée, ou propos
 Les préférences présentent le type de source, le serveur ou fichier (sans URL contenant les secrets), l’identifiant Xtream, l’état du compte, les dates de création et d’expiration, la formule, les connexions actives / autorisées, les formats, le fuseau fournisseur et les quantités du catalogue local. Les dates sont affichées dans le fuseau local de l’ordinateur. La date de fin figure aussi dans la navigation et l’en-tête ; une échéance à moins de sept jours est signalée.
 
 Les données viennent de l’API de compte Xtream, y compris pour une playlist basée sur `get.php` avec identifiants. Voir le [contrat de l’API de compte](https://github.com/worldofiptvcom/xtream-codes-api/blob/master/docs/player-api/user-info.md). Une playlist ordinaire ne fournit généralement pas de date de fin : TunPlayer affiche alors « Non communiquée par la source ». Une réponse explicitement sans échéance affiche « Sans date limite ». La vérification se fait en arrière-plan au démarrage si le dernier contrôle date de plus de six heures, pendant l’import / actualisation, ou avec **Vérifier les abonnements**. Après une panne, les dernières informations vérifiées restent consultables, avec indication de l’échec. Les connexions affichées correspondent au dernier contrôle, sans interrogation permanente du fournisseur.
+
+### Diagnostic de démarrage (1.6.1)
+
+Fermez l’application puis exécutez `/usr/bin/python3 scripts/diagnose_playback.py`. La fenêtre utilise le code installé ; ouvrez les contenus à mesurer puis fermez TunPlayer. Le rapport privé `dist/playback-diagnostic.json` contient uniquement des durées, étapes techniques et types de contenus, sans noms, URL de flux ou identifiants. L’option `--app-path /home/fourat/Desktop/TunPlayer` mesure le code du projet avant installation ; `--output` conserve les comparaisons dans des rapports distincts. Le temps « média chargé » correspond à l’événement mpv ; le premier temps de lecture observé est enregistré séparément, sans prétendre mesurer l’affichage physique de la première image.
+
+La position et l’état de lecture sont suivis par [observations de propriétés libmpv](https://github.com/mpv-player/mpv/blob/v0.37.0/libmpv/client.h). L’analyse initiale des directs HTTP(S) est bornée à 0,5 seconde avec `demuxer-lavf-analyzeduration` ; la détection des pistes et le cache restent activés, et l’analyse habituelle est rétablie pour les autres contenus et les réessais. Voir les [options du démultiplexeur mpv](https://mpv.io/manual/stable/#demuxer). Cette réduction concerne l’analyse du flux, pas le délai de réponse du fournisseur.

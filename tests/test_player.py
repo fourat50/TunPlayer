@@ -6,6 +6,42 @@ from unittest.mock import patch
 from tunplayer.player import Player
 
 class Playback(unittest.TestCase):
+    def test_event_observed_properties_follow_real_playback_and_pause(self):
+        player=Player(headless=True)
+        try:
+            player.command('loadfile',str(Path(__file__).resolve().parents[1]/'assets/demo.mp4'))
+            until=time.monotonic()+3
+            while time.monotonic()<until:
+                player.events()
+                if float(player.cached('time-pos','0'))>.05:break
+                time.sleep(.01)
+            self.assertGreater(float(player.cached('time-pos','0')),0)
+            self.assertGreater(float(player.cached('duration','0')),10)
+            player.set('pause','yes')
+            until=time.monotonic()+1
+            while time.monotonic()<until and player.cached('pause')!='yes':
+                player.events();time.sleep(.01)
+            self.assertEqual(player.cached('pause'),'yes')
+            player.command('stop');self.assertEqual(player.cached('time-pos','0'),'0')
+            self.assertEqual(player.cached('missing','fallback'),'fallback')
+        finally:player.close()
+
+    def test_live_startup_profile_is_reset_for_vod_radio_and_retry(self):
+        player=Player(headless=True)
+        try:
+            live={'kind':'live','url':'https://example.org/live.ts'}
+            player.prepare_stream(live)
+            self.assertEqual(float(player.get('demuxer-lavf-analyzeduration')),.5)
+            player.prepare_stream(live,conservative=True)
+            self.assertEqual(float(player.get('demuxer-lavf-analyzeduration')),0)
+            for channel in ({'kind':'movie','url':'https://example.org/movie.mp4'},
+                            {'kind':'episode','url':'https://example.org/episode.mkv'},dict(live,radio=True),dict(live,url='/tmp/live.ts')):
+                player.prepare_stream(channel)
+                self.assertEqual(float(player.get('demuxer-lavf-analyzeduration')),0)
+            self.assertEqual(player.get('demuxer-lavf-probe-info'),'auto')
+            self.assertEqual(player.get('cache'),'yes')
+        finally:player.close()
+
     def test_visible_player_cannot_start_without_valid_host_window(self):
         with patch('tunplayer.player.C.CDLL') as library:
             for identity in (None,0,-1,True,'42'):

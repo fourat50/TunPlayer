@@ -66,14 +66,15 @@ class SourceMixin:
             source=next(s for s in sources if str(s['id'])==identity)
         self.refresh_source(source)
 
-    def refresh_source_accounts(self,automatic=False):
+    def refresh_source_accounts(self,automatic=False,source_ids=None,force=False):
         if self.closing:return False
         if getattr(self,'source_accounts_loading',False):return False
         snapshots=[]
         for source in self.library.sources():
+            if source_ids is not None and source['id'] not in source_ids:continue
             config=self.library.source_config(source['id']);account=self.library.source_account(source['id'])
             checked=max(account.get('attempted_at',0),account.get('checked_at',0))
-            if account_connection(config) and (not automatic or time.time()-checked>6*3600):
+            if account_connection(config) and (force or not automatic or time.time()-checked>6*3600):
                 snapshots.append((source['id'],config,account))
         if not snapshots:
             if not automatic:self.notify('Aucun compte à vérifier : cette playlist ne fournit pas d’API de compte.')

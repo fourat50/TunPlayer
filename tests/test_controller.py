@@ -31,6 +31,7 @@ class Controller(unittest.TestCase):
 
     def tearDown(self):
         self.wait(lambda:self.app.writes.idle)
+        if hasattr(self.app,'source_account_tasks'):self.app.source_account_tasks.close()
         self.app.catalog_tasks.close();self.app.detail_tasks.close();self.app.writes.close()
         if self.app.player:self.app.player.close()
         self.app.library.close();self.tmp.cleanup()
@@ -316,13 +317,37 @@ class Controller(unittest.TestCase):
         def account(*args):
             threads.append(threading.get_ident())
             return normalize_account({'user_info':{'auth':1,'status':'Active','exp_date':'1900000000'}})
-        with patch('tunplayer.app.load_source',return_value=rows),patch('tunplayer.app.fetch_account',side_effect=account):
+        with patch('tunplayer.app.load_source',return_value=rows),patch('tunplayer.source_ui.fetch_account',side_effect=account):
             self.app.source_job('Compte',config)
             self.wait(lambda:not self.app.busy)
+            self.wait(lambda:not self.app.source_accounts_loading)
             source=self.app.library.sources()[0]
             self.assertEqual(self.app.library.source_account(source['id'])['expires_at'],1900000000)
             self.app.refresh_source(source);self.wait(lambda:not self.app.busy)
+            self.wait(lambda:not self.app.source_accounts_loading)
         self.assertEqual(len(threads),2);self.assertTrue(all(t!=main_thread for t in threads))
+
+    def test_slow_account_api_does_not_delay_source_import_or_playback(self):
+        import threading
+        config={'type':'xtream','server':'https://example.org','username':'test','password':'secret'}
+        rows=[dict(name='News',group_name='Infos',url=str(ROOT/'assets/demo.mp4'),kind='live',tvg_id='',logo='')]
+        started=threading.Event();proceed=threading.Event()
+        def account(*args):
+            started.set();proceed.wait(4)
+            return {'checked_at':100,'expires_at':1900000000}
+        try:
+            with patch('tunplayer.app.load_source',return_value=rows),patch('tunplayer.source_ui.fetch_account',side_effect=account):
+                self.app.source_job('Compte',config)
+                self.wait(lambda:not self.app.busy,seconds=1)
+                self.assertTrue(started.wait(1));self.assertFalse(proceed.is_set())
+                self.assertEqual(self.views,['live'])
+                self.assertEqual(len(self.app.library.channels()),1)
+                self.app.ensure_player=lambda:setattr(self.app,'player',self.app.player or Player(headless=True))
+                self.app.play(self.app.library.channels()[0])
+                self.wait(lambda:self.app.tick() and self.app.media_loaded,seconds=2)
+                self.assertFalse(proceed.is_set())
+                proceed.set();self.wait(lambda:not self.app.source_accounts_loading)
+        finally:proceed.set()
 
     def test_background_account_check_preserves_catalog_and_ignores_changed_credentials(self):
         import threading
@@ -345,5 +370,19 @@ class Controller(unittest.TestCase):
         finally:
             proceed.set()
             self.app.source_account_tasks.close()
+
+    def test_playback_tick_does_not_synchronously_query_mpv_properties(self):
+        self.app.player=Player(headless=True)
+        self.app.player.command('loadfile',str(ROOT/'assets/demo.mp4'))
+        self.wait(lambda:self.app.player.events() or float(self.app.player.cached('time-pos','0'))>.05)
+        with patch.object(self.app.player,'get',side_effect=AssertionError('Blocking property request in GTK loop')):
+            for _ in range(3):self.assertTrue(self.app.tick())
+
+    def test_category_tooltip_uses_literal_text_with_ampersands(self):
+        values=[];rows=[]
+        tree=SimpleNamespace(get_tooltip_context=lambda *a:(True,[['4K MAFIA & GANGSTER [EN]']],[0],0),set_tooltip_row=lambda tip,path:rows.append(path))
+        tip=SimpleNamespace(set_text=values.append)
+        self.assertTrue(self.app.category_tooltip(tree,0,0,False,tip))
+        self.assertEqual(values,['4K MAFIA & GANGSTER [EN]']);self.assertEqual(rows,[[0]])
 
 if __name__=='__main__':unittest.main()

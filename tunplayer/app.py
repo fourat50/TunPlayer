@@ -33,7 +33,7 @@ from .access_ui import AccessMixin
 from .interactions import InteractionMixin
 from .subtitle_ui import SubtitleMixin
 from .source_ui import SourceMixin
-from .source_info import fetch_account,subscription
+from .source_info import subscription
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -234,7 +234,8 @@ class App(SourceMixin,SubtitleMixin,AccessMixin,InteractionMixin,DownloadMixin,R
         self.category_filter=self.category_store.filter_new()
         self.category_filter.set_visible_func(lambda model,it,_:model[it][3] or fold(self.category_query) in model[it][2])
         self.category_tree=Gtk.TreeView(model=self.category_filter);self.category_tree.set_headers_visible(False)
-        self.category_tree.get_style_context().add_class('category-list');self.category_tree.set_tooltip_column(0)
+        self.category_tree.get_style_context().add_class('category-list');self.category_tree.set_has_tooltip(True)
+        self.category_tree.connect('query-tooltip',self.category_tooltip)
         name_renderer=Gtk.CellRendererText();name_renderer.set_property('ellipsize',3);name_renderer.set_property('ypad',10)
         name_renderer.set_property('max-width-chars',22)
         name_column=Gtk.TreeViewColumn('Catégorie',name_renderer,text=0);name_column.set_expand(True)
@@ -1228,24 +1229,23 @@ class App(SourceMixin,SubtitleMixin,AccessMixin,InteractionMixin,DownloadMixin,R
 
     def source_job(self, name, config, source=None):
         self.save_position()
-        previous=self.library.source_account(source['id']) if source and self.library.source_config(source['id'])==config else None
+        connection_changed=source is not None and self.library.source_config(source['id'])!=config
         def work():
             channels=load_source(config)
-            account=fetch_account(config,previous)
             # A separate connection keeps SQLite work off the GTK event loop.
             library=Library(self.library.path,migrate=False)
             try:
                 if source is not None:
                     result=library.refresh_source(source['id'],channels,config=config,name=name)
-                    library.save_source_account(source['id'],account,config)
-                    return result
+                    if connection_changed:library.save_source_account(source['id'],{},config)
+                    return dict(result,source_id=source['id'])
                 identity=library.import_channels(name,channels,config=config)
-                library.save_source_account(identity,account,config)
-                return {'total':library.channel_count(source_id=identity)}
+                return {'total':library.channel_count(source_id=identity),'source_id':identity}
             finally:
                 library.close()
         def done(result):
             self.changed()
+            self.refresh_source_accounts(automatic=True,source_ids=[result['source_id']],force=True)
             # A token rotation may also change the current channel's URL.
             if self.current and not self.current.get('demo'):
                 current=self.library.channel(self.current['id'])
@@ -1908,6 +1908,7 @@ class App(SourceMixin,SubtitleMixin,AccessMixin,InteractionMixin,DownloadMixin,R
         self.accepting_load=True;self.media_loaded=False;self.load_deadline=time.monotonic()+25
         try:
             self.ensure_player();self.player.events()
+            if hasattr(self.player,'prepare_stream'):self.player.prepare_stream(self.current,conservative=bool(self.reconnect.attempts))
             self.player.set('vid','no' if self.current.get('radio') else 'auto')
             self.player.command('loadfile',self.current['url'],'replace')
             self.player.set('pause','yes' if self.user_paused else 'no')
@@ -2154,15 +2155,16 @@ class App(SourceMixin,SubtitleMixin,AccessMixin,InteractionMixin,DownloadMixin,R
                     self.resume_target=self.current['position'];self.resume_deadline=time.monotonic()+5
                     self.command('seek',self.resume_target,'absolute')
         old_position=self.position
+        read=getattr(self.player,'cached',self.player.get)
         try:
-            position=float(self.player.get('time-pos','0'));duration=float(self.player.get('duration','0'))
+            position=float(read('time-pos','0'));duration=float(read('duration','0'))
             if self.media_loaded:
                 self.duration=duration
                 if self.resume_target is not None and (position>=self.resume_target-2 or time.monotonic()>=self.resume_deadline):self.resume_target=None
                 if self.resume_target is None:self.position=position
         except ValueError:pass
-        paused=self.player.get('pause')=='yes';buffering=self.player.get('paused-for-cache')=='yes'
-        eof=self.player.get('eof-reached')=='yes'
+        paused=read('pause')=='yes';buffering=read('paused-for-cache')=='yes'
+        eof=read('eof-reached')=='yes'
         if self.media_loaded and self.current:
             if self.duration>0 and not self.duration_saved and self.current['kind']!='live' and not self.current.get('demo'):
                 identity=self.current['id'];duration=self.duration
@@ -2197,11 +2199,11 @@ class App(SourceMixin,SubtitleMixin,AccessMixin,InteractionMixin,DownloadMixin,R
             self.timeline.set_range(0,max(self.duration,1));self.timeline.set_value(self.position)
         self.timeline.set_sensitive(self.duration>0 and not (self.current and self.current.get('radio')))
         if self.current and self.current.get('radio') and hasattr(self,'radio_song'):
-            self.radio_song.set_text(self.player.get('metadata/by-key/icy-title') or 'Radio en direct')
+            self.radio_song.set_text(read('metadata/by-key/icy-title') or 'Radio en direct')
         self.time_label.set_text(f'{clock(self.position)} / {clock(self.duration)}' if self.duration else
             '● DIRECT' if self.current and self.current['kind']=='live' else 'Durée indisponible')
         self.update_pause_visual(paused)
-        if self.media_loaded and not self.eof_handled and not self.reconnect.pending and self.player.get('idle-active')!='yes':
+        if self.media_loaded and not self.eof_handled and not self.reconnect.pending and read('idle-active')!='yes':
             self.player_status.set_text('Mise en mémoire tampon…' if buffering else 'Pause' if paused else 'Lecture en cours')
         self.refresh_diagnostics()
         self.update_playback_banners();self.tick_count+=1

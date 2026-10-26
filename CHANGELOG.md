@@ -1,5 +1,13 @@
 # Historique
 
+## 1.6.1
+
+- États de lecture reçus par événements libmpv : position, durée, pause, tampon et fin ne provoquent plus de lectures synchrones répétées dans la boucle GTK. Le diagnostic réel avait relevé un appel de 364 ms pendant le démarrage.
+- Analyse initiale des directs HTTP(S) limitée à 0,5 seconde, sans désactiver la détection de flux ni le cache. Analyse habituelle conservée pour les films, épisodes, radios et tentatives de reconnexion.
+- Vérification d’abonnement séparée de l’import / actualisation : un fournisseur lent ne retarde plus la disponibilité du catalogue. Les informations du compte continuent à se mettre à jour en arrière-plan.
+- Correction des infobulles des catégories contenant `&` ou des caractères interprétés comme du balisage GTK.
+- Diagnostic de lecture sans URL ni identifiants, et test réel MPEG-TS à débit contrôlé pour vérifier le démarrage avec pistes audio / vidéo présentes.
+
 ## 1.6.0
 
 - Informations des sources et abonnements dans Préférences et Mes sources : type, serveur sans secrets, identifiant, statut, date de fin / création, formule, connexions, formats, fuseau, catalogue et dates de vérification.
